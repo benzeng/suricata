@@ -335,7 +335,7 @@
  
  static uint64_t TdsGetTxCnt(void *state)
  {
-    TDSTransaction *tds = state;
+     TDSState *tds = state;
      SCLogNotice("Current tx count is %"PRIu64".", tds->transaction_max);
      return tds->transaction_max;
  }
@@ -522,7 +522,7 @@
  
          /* Application layer event handling. */
          AppLayerParserRegisterHasEventsFunc(IPPROTO_TCP, ALPROTO_TDS,
-             TemplateHasEvents);
+             TdsHasEvents);
  
          /* What is this being registered for? */
          AppLayerParserRegisterDetectStateFuncs(IPPROTO_TCP, ALPROTO_TDS,
