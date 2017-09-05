@@ -145,7 +145,7 @@
  static int TdsStateGetEventInfo(const char *event_name, int *event_id,
      AppLayerEventType *event_type)
  {
-     *event_id = SCMapEnumNameToValue(event_name, template_decoder_event_table);
+     *event_id = SCMapEnumNameToValue(event_name, tds_decoder_event_table);
      if (*event_id == -1) {
          SCLogError(SC_ERR_INVALID_ENUM_MAP, "event \"%s\" not present in "
                     "template enum map table.",  event_name);
