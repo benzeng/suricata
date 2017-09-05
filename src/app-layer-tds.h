@@ -18,8 +18,11 @@
 #ifndef __APP_LAYER_TDS_H__
 #define __APP_LAYER_TDS_H__
  
+#include "util-radix-tree.h"
+#include "util-file.h"
+#include "app-layer-htp-mem.h"
 #include "detect-engine-state.h"
-
+#include "util-streaming-buffer.h"
 #include "queue.h"
 
 void RegisterTdsParsers(void);
