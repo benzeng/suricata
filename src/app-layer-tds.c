@@ -102,8 +102,8 @@
  
  static void TdsStateFree(void *state)
  {
-     TemplateState *tds_state = state;
-     TemplateTransaction *tx;
+     TDSState *tds_state = state;
+     TDSTransaction *tx;
      SCLogNotice("Freeing TDS state.");
      while ((tx = TAILQ_FIRST(&tds_state->tx_list)) != NULL) {
          TAILQ_REMOVE(&tds_state->tx_list, tx, next);
