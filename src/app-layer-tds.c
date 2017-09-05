@@ -259,7 +259,7 @@
          SCLogNotice("Creating event for empty message.");
          AppLayerDecoderEventsSetEventRaw(&tx->decoder_events,
              TDS_DECODER_EVENT_EMPTY_MESSAGE);
-         echo->events++;
+         tds->events++;
      }
  
  end:    
