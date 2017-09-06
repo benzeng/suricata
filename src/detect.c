@@ -2030,6 +2030,10 @@ PacketCreateMask(Packet *p, SignatureMask *mask, AppProto alproto,
                     SCLogDebug("packet/flow has template state");
                     (*mask) |= SIG_MASK_REQUIRE_TEMPLATE_STATE;
                     break;
+                case ALPROTO_TDS:
+                    SCLogDebug("packet/flow has tds state");
+                    (*mask) |= SIG_MASK_REQUIRE_TDS_STATE;
+                    break;
                 default:
                     SCLogDebug("packet/flow has other state");
                     break;

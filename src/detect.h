@@ -271,6 +271,7 @@ typedef struct DetectPort_ {
 #define SIG_MASK_REQUIRE_TEMPLATE_STATE     (1<<13)
 #define SIG_MASK_REQUIRE_ENIP_STATE         (1<<14)
 #define SIG_MASK_REQUIRE_DNP3_STATE         (1<<15)
+#define SIG_MASK_REQUIRE_TDS_STATE          (1<<16)
 
 /* for now a uint8_t is enough */
 #define SignatureMask uint16_t
