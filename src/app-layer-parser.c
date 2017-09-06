@@ -64,6 +64,7 @@
 #include "app-layer-nfs-udp.h"
 #include "app-layer-ntp.h"
 #include "app-layer-template.h"
+#include "app-layer-tds.h"
 
 #include "conf.h"
 #include "util-spm.h"
@@ -1389,6 +1390,7 @@ void AppLayerParserRegisterProtocolParsers(void)
     RegisterNFSUDPParsers();
     RegisterNTPParsers();
     RegisterTemplateParsers();
+    RegisterTdsParsers();
 
     /** IMAP */
     AppLayerProtoDetectRegisterProtocol(ALPROTO_IMAP, "imap");
