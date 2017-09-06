@@ -90,7 +90,7 @@ const char *AppProtoToString(AppProto alproto)
         case ALPROTO_TEMPLATE:
             proto_name = "template";
             break;
-        case ALPROTO_TDS:
+        case ALPROTO_TDS://Ben+
             proto_name = "tds";
             break;
         case ALPROTO_FAILED:
