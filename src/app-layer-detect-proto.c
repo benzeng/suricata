@@ -767,6 +767,8 @@ static void AppLayerProtoDetectPrintProbingParsers(AppLayerProtoDetectProbingPar
                     printf("            alproto: ALPROTO_TEMPLATE\n");
                 else if (pp_pe->alproto == ALPROTO_DNP3)
                     printf("            alproto: ALPROTO_DNP3\n");
+                else if (pp_pe->alproto == ALPROTO_TDS)
+                    printf("            alproto: ALPROTO_TDS\n");
                 else
                     printf("impossible\n");
 

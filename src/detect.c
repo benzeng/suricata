@@ -2171,6 +2171,10 @@ static int SignatureCreateMask(Signature *s)
         s->mask |= SIG_MASK_REQUIRE_TEMPLATE_STATE;
         SCLogDebug("sig requires template state");
     }
+    if (s->alproto == ALPROTO_TDS) {
+        s->mask |= SIG_MASK_REQUIRE_TDS_STATE;
+        SCLogDebug("sig requires tds state");
+    }
 
     if ((s->mask & SIG_MASK_REQUIRE_DCE_STATE) ||
         (s->mask & SIG_MASK_REQUIRE_HTTP_STATE) ||
@@ -2181,7 +2185,8 @@ static int SignatureCreateMask(Signature *s)
         (s->mask & SIG_MASK_REQUIRE_SMTP_STATE) ||
         (s->mask & SIG_MASK_REQUIRE_ENIP_STATE) ||
         (s->mask & SIG_MASK_REQUIRE_TEMPLATE_STATE) ||
-        (s->mask & SIG_MASK_REQUIRE_TLS_STATE))
+        (s->mask & SIG_MASK_REQUIRE_TLS_STATE) ||
+        (s->mask & SIG_MASK_REQUIRE_TDS_STATE) )
     {
         s->mask |= SIG_MASK_REQUIRE_FLOW;
         SCLogDebug("sig requires flow");

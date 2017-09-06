@@ -465,7 +465,7 @@
              if (!AppLayerProtoDetectPPParseConfPorts("tcp", IPPROTO_TCP,
                      proto_name, ALPROTO_TDS, 0, TDS_MIN_FRAME_LEN,
                      TdsProbingParser, NULL)) {
-                 SCLogNotice("No echo app-layer configuration, enabling echo"
+                 SCLogNotice("No echo app-layer configuration, enabling tds"
                      " detection TCP detection on port %s.",
                      TDS_DEFAULT_PORT);
                  AppLayerProtoDetectPPRegister(IPPROTO_TCP,
