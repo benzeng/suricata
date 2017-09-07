@@ -197,11 +197,103 @@
      return ALPROTO_UNKNOWN;
  }
  
+／* Debug *／
+static void Dump(StreamingBuffer *sb)
+{
+    PrintRawDataFp(stdout, sb->buf, sb->buf_offset);
+}
+
+static void DumpSegment(StreamingBuffer *sb, StreamingBufferSegment *seg)
+{
+    const uint8_t *data = NULL;
+    uint32_t data_len = 0;
+    StreamingBufferSegmentGetData(sb, seg, &data, &data_len);
+    if (data && data_len) {
+        PrintRawDataFp(stdout, data, data_len);
+    }
+}
+
+ static int StreamingBufferTest01(void)
+ {
+     StreamingBufferConfig cfg = { STREAMING_BUFFER_AUTOSLIDE, 8, 16, NULL, NULL, NULL, NULL };
+     StreamingBuffer *sb = StreamingBufferInit(&cfg);
+     FAIL_IF(sb == NULL);
+ 
+     StreamingBufferSegment *seg1 = StreamingBufferAppendRaw(sb, (const uint8_t *)"ABCDEFGH", 8);
+     StreamingBufferSegment *seg2 = StreamingBufferAppendRaw(sb, (const uint8_t *)"01234567", 8);
+     FAIL_IF(sb->stream_offset != 0);
+     FAIL_IF(sb->buf_offset != 16);
+     FAIL_IF(seg1->stream_offset != 0);
+     FAIL_IF(seg2->stream_offset != 8);
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg1));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg2));
+     FAIL_IF(!StreamingBufferSegmentCompareRawData(sb,seg1,(const uint8_t *)"ABCDEFGH", 8));
+     FAIL_IF(!StreamingBufferSegmentCompareRawData(sb,seg2,(const uint8_t *)"01234567", 8));
+     Dump(sb);
+ 
+     StreamingBufferSegment *seg3 = StreamingBufferAppendRaw(sb, (const uint8_t *)"QWERTY", 6);
+     FAIL_IF(sb->stream_offset != 8);
+     FAIL_IF(sb->buf_offset != 14);
+     FAIL_IF(seg3->stream_offset != 16);
+     FAIL_IF(!StreamingBufferSegmentIsBeforeWindow(sb,seg1));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg2));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg3));
+     FAIL_IF(!StreamingBufferSegmentCompareRawData(sb,seg3,(const uint8_t *)"QWERTY", 6));
+     Dump(sb);
+ 
+     StreamingBufferSegment *seg4 = StreamingBufferAppendRaw(sb, (const uint8_t *)"KLM", 3);
+     FAIL_IF(sb->stream_offset != 14);
+     FAIL_IF(sb->buf_offset != 11);
+     FAIL_IF(seg4->stream_offset != 22);
+     FAIL_IF(!StreamingBufferSegmentIsBeforeWindow(sb,seg1));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg2));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg3));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg4));
+     FAIL_IF(!StreamingBufferSegmentCompareRawData(sb,seg4,(const uint8_t *)"KLM", 3));
+     Dump(sb);
+ 
+     StreamingBufferSegment *seg5 = StreamingBufferAppendRaw(sb, (const uint8_t *)"!@#$%^&*()_+<>?/,.;:'[]{}-=", 27);
+     FAIL_IF(sb->stream_offset != 17);
+     FAIL_IF(sb->buf_offset != 35);
+     FAIL_IF(seg5->stream_offset != 25);
+     FAIL_IF(!StreamingBufferSegmentIsBeforeWindow(sb,seg1));
+     FAIL_IF(!StreamingBufferSegmentIsBeforeWindow(sb,seg2));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg3));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg4));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg5));
+     FAIL_IF(!StreamingBufferSegmentCompareRawData(sb,seg5,(const uint8_t *)"!@#$%^&*()_+<>?/,.;:'[]{}-=", 27));
+     Dump(sb);
+ 
+     StreamingBufferSegment *seg6 = StreamingBufferAppendRaw(sb, (const uint8_t *)"UVWXYZ", 6);
+     FAIL_IF(sb->stream_offset != 17);
+     FAIL_IF(sb->buf_offset != 41);
+     FAIL_IF(seg6->stream_offset != 52);
+     FAIL_IF(!StreamingBufferSegmentIsBeforeWindow(sb,seg1));
+     FAIL_IF(!StreamingBufferSegmentIsBeforeWindow(sb,seg2));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg3));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg4));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg5));
+     FAIL_IF(StreamingBufferSegmentIsBeforeWindow(sb,seg6));
+     FAIL_IF(!StreamingBufferSegmentCompareRawData(sb,seg6,(const uint8_t *)"UVWXYZ", 6));
+     Dump(sb);
+ 
+     SCFree(seg1);
+     SCFree(seg2);
+     SCFree(seg3);
+     SCFree(seg4);
+     SCFree(seg5);
+     SCFree(seg6);
+     StreamingBufferFree(sb);
+     PASS;
+ }
+
  static int TdsParseRequest(Flow *f, void *state,
      AppLayerParserState *pstate, uint8_t *input, uint32_t input_len,
      void *local_data)
  {
      TDSState *tds = (TDSState *)state;
+
+     StreamingBufferTest01();
  
      SCLogNotice("Parsing TDS request: len=%"PRIu32, input_len);
  

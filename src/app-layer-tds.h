@@ -20,15 +20,53 @@
  
 #include "util-radix-tree.h"
 #include "util-file.h"
-#include "app-layer-htp-mem.h"
 #include "detect-engine-state.h"
 #include "util-streaming-buffer.h"
 #include "queue.h"
 
+
 void RegisterTdsParsers(void);
 void TdsParserRegisterTests(void);
 
+typedef struct TDSCfgDir_ {
+    StreamingBufferConfig sbcfg;
+} TDSCfgDir;
+
+typedef struct TdsQueryAndResult_ {
+
+    char* queryBuffer;
+    char* ResultBuffer;
+};
+
+typedef struct TdsConnection_ {
+
+/* Members */
+    /* TDS Connection Info */
+    uint32_t SrcIp;
+    uint32_t SrcPort;
+    uint32_t DestIp;
+    uint32_t DestPort;
+
+    /* TDS Query and Result, Keey Max 50 Query/Result */
+
+    
+}TdsConnection;
+
+typedef struct TdsConnectionParser_ {
+
+/* Members */
+    TdsConnection *tdsConnection;
+
+/* Methods */
+
+}TdsConnectionParser;
+
+
+
 typedef struct TDSTransaction_ {
+
+    TdsConnectionParser TdsParser;
+
 
     uint64_t tx_id;             /*<< Internal transaction ID. */
 
