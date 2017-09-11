@@ -55,70 +55,7 @@
      // event table must be NULL-terminated
      { NULL, -1 },
  };
- 
- static TDSTransaction *TdsTxAlloc(TDSState *tds)
- {
-    TDSTransaction *tx = SCCalloc(1, sizeof(TDSTransaction));
-     if (unlikely(tx == NULL)) {
-         return NULL;
-     }
- 
-     /* Increment the transaction ID on the state each time one is
-      * allocated. */
-     tx->tx_id = tds->transaction_max++;
- 
-     TAILQ_INSERT_TAIL(&tds->tx_list, tx, next);
- 
-     return tx;
- }
- 
- static void TdsTxFree(void *tx)
- {
-    TDSTransaction *tdstx = (TDSTransaction *)tx;
- 
-     if (tdstx->request_buffer != NULL) {
-         SCFree(tdstx->request_buffer);
-     }
- 
-     if (tdstx->response_buffer != NULL) {
-         SCFree(tdstx->response_buffer);
-     }
- 
-     AppLayerDecoderEventsFreeEvents(&tdstx->decoder_events);
- 
-     SCFree(tx);
- }
- 
 
- /**
-  * \brief Callback from the application layer to have a transaction freed.
-  *
-  * \param state a void pointer to the TdsState object.
-  * \param tx_id the transaction ID to free.
-  */
- static void TdsStateTxFree(void *state, uint64_t tx_id)
- {
-     TDSState *tds = (TDSState *)state;
-     TDSTransaction *tx = NULL, *ttx;
- 
-     SCLogNotice("Freeing transaction %"PRIu64, tx_id);
- 
-     TAILQ_FOREACH_SAFE(tx, &tds->tx_list, next, ttx) {
- 
-         /* Continue if this is not the transaction we are looking
-          * for. */
-         if (tx->tx_id != tx_id) {
-             continue;
-         }
- 
-         /* Remove and free the transaction. */
-         TAILQ_REMOVE(&tds->tx_list, tx, next);
-         TdsTxFree(tx);
-         return;
-     }
- 
-     SCLogNotice("Transaction %"PRIu64" not found.", tx_id);
- }
  
  static int TdsStateGetEventInfo(const char *event_name, int *event_id,
      AppLayerEventType *event_type)
