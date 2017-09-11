@@ -27,6 +27,7 @@
 
 typedef struct TdsSessionPacket_ {
     TAILQ_HEAD(, StreamingBuffer) tdsSessionPacketFragments;
+    TAILQ_ENTRY(TdsSessionPacket_) next;
 }TdsSessionPacket;
 
 /* Packet stream input state */
