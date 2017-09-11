@@ -24,10 +24,15 @@
 #include "util-streaming-buffer.h"
 #include "queue.h"
 
+typedef struct StreamingBufferNode_ {
+    StreamingBuffer sb;
+    TAILQ_ENTRY(StreamingBufferNode_) next;
+}StreamingBufferNode;
 
 typedef struct TdsSessionPacket_ {
-    TAILQ_HEAD(, StreamingBuffer) tdsSessionPacketFragments;
     TAILQ_ENTRY(TdsSessionPacket_) next;
+
+    TAILQ_HEAD(, StreamingBufferNode_) tdsSessionPacketFragments;
 }TdsSessionPacket;
 
 /* Packet stream input state */
@@ -53,8 +58,8 @@ typedef struct TDSState_ {
 
     uint16_t tdsRequestPacketState;
     uint16_t tdsResponsePacketState;
-    TAILQ_HEAD(, TdsSessionPacket)  tdsRequestPackets;
-    TAILQ_HEAD(, TdsSessionPacket)  tdsRespondsPackets;
+    TAILQ_HEAD(, TdsSessionPacket_)  tdsRequestPackets;
+    TAILQ_HEAD(, TdsSessionPacket_)  tdsRespondsPackets;
 
 } TDSState;
 

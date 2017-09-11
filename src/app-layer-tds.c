@@ -139,10 +139,10 @@
      StreamingBufferNode *pStreamBufNode = NULL;
 
      // For Request 
-     while ((pSessionPacket = TAILQ_FIRST(&tds_state->tdsRequestPackets)) != NULL) {
+     while ((pSessionPacket = (TdsSessionPacket *)TAILQ_FIRST(&tds_state->tdsRequestPackets)) != NULL) {
          TAILQ_REMOVE(&tds_state->tdsRequestPackets, pSessionPacket, next);
 
-         while((pStreamBufNode = TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
+         while((pStreamBufNode = (StreamingBufferNode *)TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
             TAILQ_REMOVE(&pSessionPacket->tdsSessionPacketFragments, pStreamBufNode, next);
             StreamingBufferFree( pStreamBufNode->sb );
             SCFree( pStreamBufNode );
@@ -151,10 +151,10 @@
          SCFree(pSessionPacket);
      }
      // For Response
-     while ((pSessionPacket = TAILQ_FIRST(&tds_state->tdsRespondsPackets)) != NULL) {
+     while ((pSessionPacket = (TdsSessionPacket *)TAILQ_FIRST(&tds_state->tdsRespondsPackets)) != NULL) {
         TAILQ_REMOVE(&tds_state->tdsRespondsPackets, pSessionPacket, next);
 
-        while((pStreamBufNode = TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
+        while((pStreamBufNode = (StreamingBufferNode *)TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
            TAILQ_REMOVE(&pSessionPacket->tdsSessionPacketFragments, pStreamBufNode, next);
            StreamingBufferFree( pStreamBufNode->sb );
            SCFree( pStreamBufNode );
