@@ -136,15 +136,16 @@
      SCLogNotice("Freeing TDS state.");
 
      TdsSessionPacket *pSessionPacket = NULL;
-     StreamingBuffer *pStreamBuf = NULL;
+     StreamingBufferNode *pStreamBufNode = NULL;
 
      // For Request 
      while ((pSessionPacket = TAILQ_FIRST(&tds_state->tdsRequestPackets)) != NULL) {
          TAILQ_REMOVE(&tds_state->tdsRequestPackets, pSessionPacket, next);
 
-         while((pStreamBuf = TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
-            TAILQ_REMOVE(&pSessionPacket->tdsSessionPacketFragments, pStreamBuf, next);
-            StreamingBufferFree( pStreamBuf );
+         while((pStreamBufNode = TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
+            TAILQ_REMOVE(&pSessionPacket->tdsSessionPacketFragments, pStreamBufNode, next);
+            StreamingBufferFree( pStreamBufNode->sb );
+            SCFree( pStreamBufNode );
          }
 
          SCFree(pSessionPacket);
@@ -153,9 +154,10 @@
      while ((pSessionPacket = TAILQ_FIRST(&tds_state->tdsRespondsPackets)) != NULL) {
         TAILQ_REMOVE(&tds_state->tdsRespondsPackets, pSessionPacket, next);
 
-        while((pStreamBuf = TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
-           TAILQ_REMOVE(&pSessionPacket->tdsSessionPacketFragments, pStreamBuf, next);
-           StreamingBufferFree( pStreamBuf );
+        while((pStreamBufNode = TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
+           TAILQ_REMOVE(&pSessionPacket->tdsSessionPacketFragments, pStreamBufNode, next);
+           StreamingBufferFree( pStreamBufNode->sb );
+           SCFree( pStreamBufNode );
         }
 
         SCFree(pSessionPacket);
@@ -210,6 +212,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
 */
  static int InitTdsPacketList( TDSState *tds, uint8_t *input, uint32_t input_len )
  {
+    StreamingBufferNode *sbNode = NULL;
     StreamingBuffer *sb = NULL;
     StreamingBufferSegment seg;
     TdsSessionPacket *tdsSessionPacket = NULL;
@@ -217,13 +220,15 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
     
     sb = StreamingBufferInit(&cfg);
     FAIL_IF(sb == NULL);
-    
+    sbNode = SCCalloc( 1, sizeof(StreamingBufferNode) );
+    sbNode->sb = sb;
+
     int nRc = StreamingBufferAppend( sb , &seg, input, input_len )；
     if( nRc < 0 ) 
         return 0;
 
     tdsSessionPacket = SCCalloc(1, sizeof(TdsSessionPacket));
-    TAILQ_INSERT_TAIL(&tdsSessionPacket->tdsSessionPacketFragments, sb, next);
+    TAILQ_INSERT_TAIL(&tdsSessionPacket->tdsSessionPacketFragments, sbNode, next);
     TAILQ_INSERT_TAIL(&tds->tdsRequestPackets, tdsSessionPacket, next);
 
     return 1;
@@ -240,12 +245,14 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
  
     sb = StreamingBufferInit(&cfg);
     FAIL_IF(sb == NULL);
+    sbNode = SCCalloc( 1, sizeof(StreamingBufferNode) );
+    sbNode->sb = sb;
     
     int nRc = StreamingBufferAppend( sb , &seg, input, input_len )；
     if( nRc < 0 ) 
         return 0;
 
-    TAILQ_INSERT_TAIL(&tdsSessionPacket->tdsSessionPacketFragments, sb, next);
+    TAILQ_INSERT_TAIL(&tdsSessionPacket->tdsSessionPacketFragments, sbNode, next);
     return 1;
  }
 
