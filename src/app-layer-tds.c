@@ -210,7 +210,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
     }
 }
 */
- static int InitTdsPacketList( TDSState *tds, uint8_t *input, uint32_t input_len )
+ static int InitTdsPacketList( TDSState *tds, const uint8_t *input, uint32_t input_len )
  {
     StreamingBufferNode *sbNode = NULL;
     StreamingBuffer *sb = NULL;
@@ -235,7 +235,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
     return 1;
  }
 
- static int InitTdsPacketFragment( TDSState *tds, uint8_t *input, uint32_t input_len )
+ static int InitTdsPacketFragment( TDSState *tds, const uint8_t *input, uint32_t input_len )
  {
     StreamingBufferNode *sbNode = NULL;
     StreamingBuffer *sb = NULL;
@@ -314,6 +314,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
             StreamingBufferGetData( sb, &data, &data_len, &stream_offset );
 
             /* Try to Match TDS header: 0F 00 | 0F 01 , input_len >= 8 */
+            bIsLast = FALSE;
             // ...  
             
             // ...  Found: nHeadOffset >= 0 , Not Found: nHeadOffset < 0 
@@ -355,7 +356,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
                                     return 0;
                             }
                         }
-                        state->tdsRequestPacketState = TDS_PACKET_STATE_NEW;                            
+                        tds->tdsRequestPacketState = TDS_PACKET_STATE_NEW;                            
                     }
                     /* NEXT */
                     else {
