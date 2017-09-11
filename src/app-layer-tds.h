@@ -29,10 +29,10 @@ typedef struct StreamingBufferNode_ {
     TAILQ_ENTRY(StreamingBufferNode_) next;
 }StreamingBufferNode;
 
-struct StreamingBufferNodeList {								\
+typedef struct StreamingBufferNodeList_ {								\
 	struct StreamingBufferNode *tqh_first;	/* first element */			\
 	struct StreamingBufferNode **tqh_last;	/* addr of last next element */		\
-};
+}StreamingBufferNodeList;
 
 typedef struct TdsSessionPacket_ {
     TAILQ_ENTRY(TdsSessionPacket_) next;
@@ -45,10 +45,10 @@ typedef struct TdsSessionPacket_ {
 #define TDS_PACKET_STATE_FRAGMENT 1
 #define TDS_PACKET_STATE_NEXT     2
 
-struct TdsSessionPacketList {								\
+typedef struct TdsSessionPacketList_ {								\
 	struct TdsSessionPacket *tqh_first;	/* first element */			\
 	struct TdsSessionPacket **tqh_last;	/* addr of last next element */		\
-};
+}TdsSessionPacketList;
 
 typedef struct TDSState_ {
 
