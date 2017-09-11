@@ -75,6 +75,7 @@
  
  static AppLayerDecoderEvents *TdsGetEvents(void *state, uint64_t tx_id)
  {
+/*     
     TDSState *tds_state = state;
     TDSTransaction *tx;
  
@@ -83,7 +84,7 @@
              return tx->decoder_events;
          }
      }
- 
+*/ 
      return NULL;
  }
  
