@@ -211,7 +211,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
  static int InitTdsPacketList( TDSState *tds, uint8_t *input, uint32_t input_len )
  {
     StreamingBuffer *sb = NULL;
-    StreamingBufferSegment seg；
+    StreamingBufferSegment seg;
     TdsSessionPacket *tdsSessionPacket = NULL;
     StreamingBufferConfig cfg = { STREAMING_BUFFER_NOFLAGS, 2048, 4096, NULL, NULL, NULL, NULL };
     
@@ -232,7 +232,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
  static int InitTdsPacketFragment( TDSState *tds, uint8_t *input, uint32_t input_len )
  {
     StreamingBuffer *sb = NULL;
-    StreamingBufferSegment seg；
+    StreamingBufferSegment seg;
     TdsSessionPacket *tdsSessionPacket = NULL;
     StreamingBufferConfig cfg = { STREAMING_BUFFER_NOFLAGS, 2048, 4096, NULL, NULL, NULL, NULL };
 
@@ -255,7 +255,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
  {
      TdsSessionPacket *tdsSessionPacket = NULL;
      StreamingBuffer *sb = NULL;
-     StreamingBufferSegment seg；
+     StreamingBufferSegment seg;
      int32_t nHeadOffset = 0, bIsLast = FALSE;
      TDSState *tds = (TDSState *)state;
      
@@ -443,36 +443,36 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
  
          /* Register a function to be called by the application layer
           * when a transaction is to be freed. */
-         AppLayerParserRegisterTxFreeFunc(IPPROTO_TCP, ALPROTO_TDS,
-             TdsStateTxFree);
+         //AppLayerParserRegisterTxFreeFunc(IPPROTO_TCP, ALPROTO_TDS,
+         //    TdsStateTxFree);
  
-         AppLayerParserRegisterLoggerFuncs(IPPROTO_TCP, ALPROTO_TDS,
-             TdsGetTxLogged, TdsSetTxLogged);
+         //AppLayerParserRegisterLoggerFuncs(IPPROTO_TCP, ALPROTO_TDS,
+         //    TdsGetTxLogged, TdsSetTxLogged);
  
          /* Register a function to return the current transaction count. */
-         AppLayerParserRegisterGetTxCnt(IPPROTO_TCP, ALPROTO_TDS,
-             TdsGetTxCnt);
+         //AppLayerParserRegisterGetTxCnt(IPPROTO_TCP, ALPROTO_TDS,
+         //    TdsGetTxCnt);
  
          /* Transaction handling. */
-         AppLayerParserRegisterGetStateProgressCompletionStatus(ALPROTO_TDS,
-             TdsGetAlstateProgressCompletionStatus);
-         AppLayerParserRegisterGetStateProgressFunc(IPPROTO_TCP,
-             ALPROTO_TDS, TdsGetStateProgress);
-         AppLayerParserRegisterGetTx(IPPROTO_TCP, ALPROTO_TDS,
-             TdsGetTx);
+         //AppLayerParserRegisterGetStateProgressCompletionStatus(ALPROTO_TDS,
+         //    TdsGetAlstateProgressCompletionStatus);
+         //AppLayerParserRegisterGetStateProgressFunc(IPPROTO_TCP,
+         //    ALPROTO_TDS, TdsGetStateProgress);
+         //AppLayerParserRegisterGetTx(IPPROTO_TCP, ALPROTO_TDS,
+         //    TdsGetTx);
  
          /* Application layer event handling. */
-         AppLayerParserRegisterHasEventsFunc(IPPROTO_TCP, ALPROTO_TDS,
-             TdsHasEvents);
+         //AppLayerParserRegisterHasEventsFunc(IPPROTO_TCP, ALPROTO_TDS,
+         //    TdsHasEvents);
  
          /* What is this being registered for? */
-         AppLayerParserRegisterDetectStateFuncs(IPPROTO_TCP, ALPROTO_TDS,
-             NULL, TdsGetTxDetectState, TdsSetTxDetectState);
+         //AppLayerParserRegisterDetectStateFuncs(IPPROTO_TCP, ALPROTO_TDS,
+         //    NULL, TdsGetTxDetectState, TdsSetTxDetectState);
  
-         AppLayerParserRegisterGetEventInfo(IPPROTO_TCP, ALPROTO_TDS,
-             TdsStateGetEventInfo);
-         AppLayerParserRegisterGetEventsFunc(IPPROTO_TCP, ALPROTO_TDS,
-             TdsGetEvents);
+         //AppLayerParserRegisterGetEventInfo(IPPROTO_TCP, ALPROTO_TDS,
+         //    TdsStateGetEventInfo);
+         //AppLayerParserRegisterGetEventsFunc(IPPROTO_TCP, ALPROTO_TDS,
+         //    TdsGetEvents);
      }
      else {
          SCLogNotice("TDS protocol parsing disabled.");
