@@ -223,7 +223,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
     sbNode = SCCalloc( 1, sizeof(StreamingBufferNode) );
     sbNode->sb = sb;
 
-    int nRc = StreamingBufferAppend( sb , &seg, input, input_len )；
+    int nRc = StreamingBufferAppend( sb , &seg, input, input_len );
     if( nRc < 0 ) 
         return 0;
 
@@ -241,7 +241,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
     TdsSessionPacket *tdsSessionPacket = NULL;
     StreamingBufferConfig cfg = { STREAMING_BUFFER_NOFLAGS, 2048, 4096, NULL, NULL, NULL, NULL };
 
-    tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacket );
+    tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacketList );
  
     sb = StreamingBufferInit(&cfg);
     FAIL_IF(sb == NULL);
@@ -297,8 +297,8 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
             */
             case TDS_PACKET_STATE_FRAGMENT:
             if( input_len > 0 ) {
-                tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacket );
-                sbNode = TAILQ_LAST( &tdsSessionPacket->tdsSessionPacketFragments, StreamingBufferNode );
+                tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacketList );
+                sbNode = TAILQ_LAST( &tdsSessionPacket->tdsSessionPacketFragments, StreamingBufferNodeList );
                 sb = sbNode->sb;
 
                 int nRc = StreamingBufferAppend( sb , &seg, input, input_len );
