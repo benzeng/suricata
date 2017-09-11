@@ -24,20 +24,47 @@
 #include "util-streaming-buffer.h"
 #include "queue.h"
 
+/*
+
+typedef struct ClassA_ {
+    TAILQ_ENTRY( ClassA_ ) next;
+
+    int a;
+    int b;
+}ClassA;
+
+//
+//typedef struct QueueClassA_ {
+//    struct ClassA_  *tqh_first;
+//    struct ClassA_  **tqh_last;
+//}QueueClassA;
+//
+
+TAILQ_HEAD(QueueClassA,ClassA_) queueClassA;
+//QueueClassA queueClassA;
+
+void main(void)
+{
+    TAILQ_INIT( &queueClassA );
+    ClassA *clsA = (ClassA*)calloc(1,sizeof(ClassA));
+
+    *(&queueClassA)->tqh_last = (clsA);
+
+    TAILQ_INSERT_TAIL(&queueClassA, clsA, next);
+    ClassA *clsLast = TAILQ_LAST( &queueClassA, QueueClassA );
+}
+*/
+
 typedef struct StreamingBufferNode_ {
     StreamingBuffer *sb;
     TAILQ_ENTRY(StreamingBufferNode_) next;
 }StreamingBufferNode;
 
-typedef struct StreamingBufferNodeList_ {								\
-	struct StreamingBufferNode *tqh_first;	/* first element */			\
-	struct StreamingBufferNode **tqh_last;	/* addr of last next element */		\
-}StreamingBufferNodeList;
 
 typedef struct TdsSessionPacket_ {
     TAILQ_ENTRY(TdsSessionPacket_) next;
 
-    StreamingBufferNodeList tdsSessionPacketFragments;
+    TAILQ_HEAD( StreamingBufferNodeList, StreamingBufferNode_ ) tdsSessionPacketFragments;
 }TdsSessionPacket;
 
 /* Packet stream input state */
@@ -45,10 +72,6 @@ typedef struct TdsSessionPacket_ {
 #define TDS_PACKET_STATE_FRAGMENT 1
 #define TDS_PACKET_STATE_NEXT     2
 
-typedef struct TdsSessionPacketList_ {								\
-	struct TdsSessionPacket *tqh_first;	/* first element */			\
-	struct TdsSessionPacket **tqh_last;	/* addr of last next element */		\
-}TdsSessionPacketList;
 
 typedef struct TDSState_ {
 
@@ -69,8 +92,8 @@ typedef struct TDSState_ {
     uint16_t tdsRequestPacketState;
     uint16_t tdsResponsePacketState;
 
-    TdsSessionPacketList  tdsRequestPackets;
-    TdsSessionPacketList  tdsRespondsPackets;
+    TAILQ_HEAD( TdsRequestPacketList, TdsSessionPacket_ )  tdsRequestPackets;
+    TAILQ_HEAD( TdsRespondsPacketList, TdsSessionPacket_ )  tdsRespondsPackets;
 
 } TDSState;
 

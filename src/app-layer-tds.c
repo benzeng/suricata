@@ -228,6 +228,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
         return 0;
 
     tdsSessionPacket = SCCalloc(1, sizeof(TdsSessionPacket));
+    TAILQ_INIT( &tdsSessionPacket->tdsSessionPacketFragments );
     TAILQ_INSERT_TAIL(&tdsSessionPacket->tdsSessionPacketFragments, sbNode, next);
     TAILQ_INSERT_TAIL(&tds->tdsRequestPackets, tdsSessionPacket, next);
 
