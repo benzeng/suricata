@@ -260,6 +260,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
      AppLayerParserState *pstate, uint8_t *input, uint32_t input_len,
      void *local_data)
  {
+    StreamingBufferNode *sbNode = NULL;
      TdsSessionPacket *tdsSessionPacket = NULL;
      StreamingBuffer *sb = NULL;
      StreamingBufferSegment seg;
@@ -297,9 +298,10 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
             case TDS_PACKET_STATE_FRAGMENT:
             if( input_len > 0 ) {
                 tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacket );
-                sb = TAILQ_LAST( &tdsSessionPacket->tdsSessionPacketFragments, StreamingBuffer );
+                sbNode = TAILQ_LAST( &tdsSessionPacket->tdsSessionPacketFragments, StreamingBufferNode );
+                sb = sbNode->sb;
 
-                int nRc = StreamingBufferAppend( sb , &seg, input, input_len )；
+                int nRc = StreamingBufferAppend( sb , &seg, input, input_len );
                 if( nRc < 0 ) 
                     return 0;
             }
