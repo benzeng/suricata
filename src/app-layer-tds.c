@@ -241,7 +241,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
     TdsSessionPacket *tdsSessionPacket = NULL;
     StreamingBufferConfig cfg = { STREAMING_BUFFER_NOFLAGS, 2048, 4096, NULL, NULL, NULL, NULL };
 
-    tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacket, next );
+    tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacket );
  
     sb = StreamingBufferInit(&cfg);
     FAIL_IF(sb == NULL);
@@ -296,8 +296,8 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
             */
             case TDS_PACKET_STATE_FRAGMENT:
             if( input_len > 0 ) {
-                tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacket, next );
-                sb = TAILQ_LAST( &tdsSessionPacket->tdsSessionPacketFragments, StreamingBuffer, next );
+                tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacket );
+                sb = TAILQ_LAST( &tdsSessionPacket->tdsSessionPacketFragments, StreamingBuffer );
 
                 int nRc = StreamingBufferAppend( sb , &seg, input, input_len )；
                 if( nRc < 0 ) 
