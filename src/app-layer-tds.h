@@ -92,8 +92,8 @@ typedef struct TDSState_ {
     uint16_t tdsRequestPacketState;
     uint16_t tdsResponsePacketState;
 
-    TAILQ_HEAD( TdsRequestPacketList, TdsSessionPacket_ )  tdsRequestPackets;
-    TAILQ_HEAD( TdsRespondsPacketList, TdsSessionPacket_ )  tdsRespondsPackets;
+    TAILQ_HEAD( TdsSessionPacketList, TdsSessionPacket_ )  tdsRequestPackets;
+    TAILQ_HEAD( , TdsSessionPacket_ )  tdsRespondsPackets;
 
 } TDSState;
 
