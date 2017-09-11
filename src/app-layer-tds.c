@@ -248,7 +248,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
     sbNode = SCCalloc( 1, sizeof(StreamingBufferNode) );
     sbNode->sb = sb;
     
-    int nRc = StreamingBufferAppend( sb , &seg, input, input_len )；
+    int nRc = StreamingBufferAppend( sb , &seg, input, input_len );
     if( nRc < 0 ) 
         return 0;
 

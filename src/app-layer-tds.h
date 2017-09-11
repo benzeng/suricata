@@ -25,7 +25,7 @@
 #include "queue.h"
 
 typedef struct StreamingBufferNode_ {
-    StreamingBuffer sb;
+    StreamingBuffer *sb;
     TAILQ_ENTRY(StreamingBufferNode_) next;
 }StreamingBufferNode;
 
