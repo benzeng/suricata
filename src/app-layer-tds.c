@@ -56,6 +56,34 @@
      { NULL, -1 },
  };
 
+/*
+    Note: Returned pointer should be freed.
+*/
+char * FetchPrintableString( const char *pHexBuffer, uint32_t nBufferLen, char space )
+{
+    char bFlag = 0;
+    uint32_t i = 0, j=0;
+    char *pOutput = SCFree( 1, strlen(pHexBuffer ) );
+    
+    memset( pOutput, 0, strlen(pHexBuffer) );
+    for( i=0; i<nBufferLen; ++i ) {
+        if( pHexBuffer[i] < 0x20  || pHexBuffer[i] >= 0x7F ) {
+            if( !bFlag ) {
+                pOutput[j++] = space;
+                bFlag = 1;
+            }
+            // else skip !
+        }
+        else {
+            bFlag = 0;
+            pOutput[j++] = pHexBuffer[i];
+        } 
+    }
+
+    pOutput[j++] = 0;
+	return (pOutput);
+}
+ 
  
  static int TdsStateGetEventInfo(const char *event_name, int *event_id,
      AppLayerEventType *event_type)
@@ -130,29 +158,14 @@
      return state;
  }
  
- static void TdsStateFree(void *state)
+
+ static void TdsSessionPacketFree( TdsSessionPacketList *pPacketList )
  {
-     TDSState *tds_state = state;
-     SCLogNotice("Freeing TDS state.");
+    TdsSessionPacket *pSessionPacket = NULL;
+    StreamingBufferNode *pStreamBufNode = NULL;
 
-     TdsSessionPacket *pSessionPacket = NULL;
-     StreamingBufferNode *pStreamBufNode = NULL;
-
-     // For Request 
-     while ((pSessionPacket = (TdsSessionPacket *)TAILQ_FIRST(&tds_state->tdsRequestPackets)) != NULL) {
-         TAILQ_REMOVE(&tds_state->tdsRequestPackets, pSessionPacket, next);
-
-         while((pStreamBufNode = (StreamingBufferNode *)TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
-            TAILQ_REMOVE(&pSessionPacket->tdsSessionPacketFragments, pStreamBufNode, next);
-            StreamingBufferFree( pStreamBufNode->sb );
-            SCFree( pStreamBufNode );
-         }
-
-         SCFree(pSessionPacket);
-     }
-     // For Response
-     while ((pSessionPacket = (TdsSessionPacket *)TAILQ_FIRST(&tds_state->tdsRespondsPackets)) != NULL) {
-        TAILQ_REMOVE(&tds_state->tdsRespondsPackets, pSessionPacket, next);
+    while ((pSessionPacket = (TdsSessionPacket *)TAILQ_FIRST(pPacketList)) != NULL) {
+        TAILQ_REMOVE(pPacketList, pSessionPacket, next);
 
         while((pStreamBufNode = (StreamingBufferNode *)TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
            TAILQ_REMOVE(&pSessionPacket->tdsSessionPacketFragments, pStreamBufNode, next);
@@ -162,8 +175,22 @@
 
         SCFree(pSessionPacket);
     }
+ }
 
+ static void TdsStateFree(void *state)
+ {
+     TDSState *tds_state = state;
+     SCLogNotice("Freeing TDS state.");
 
+     TdsSessionPacket *pSessionPacket = NULL;
+     StreamingBufferNode *pStreamBufNode = NULL;
+
+     // For Request 
+     TdsSessionPacketFree( &tds_state->tdsRequestPackets );
+     
+     // For Response
+     TdsSessionPacketFree( &tds_state->tdsRespondsPackets );
+     
      SCFree(tds_state);
  }
  
@@ -258,6 +285,26 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
     return 1;
  }
 
+ /* Try to Match TDS header: 0F 00 | 0F 01 , data_len >= 8 */   
+ static int FindTdsHead( const uint8_t *data, uint32_t data_len )
+ {
+    int i = 0;
+
+    if( data_len < 8 )
+         return -1;
+    
+    while( (i+1) < data_len ) {
+        if( ( data[i] != 0x0F ) || ( data[i+1] != 0x01 && data[i+1] != 0x00 ) ) {
+            i++;
+            continue;
+        }               
+        // Found:
+        return i;
+    }
+
+    return -1;
+ }
+
  static int TdsParseRequest(Flow *f, void *state,
      AppLayerParserState *pstate, uint8_t *input, uint32_t input_len,
      void *local_data)
@@ -266,7 +313,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
      TdsSessionPacket *tdsSessionPacket = NULL;
      StreamingBuffer *sb = NULL;
      StreamingBufferSegment seg;
-     int32_t nHeadOffset = 0, bIsLast = FALSE;
+     int32_t nHeadOffset = 0;
      TDSState *tds = (TDSState *)state;
      
 
@@ -282,7 +329,6 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
      if (input == NULL || input_len == 0) {
          return 0;
      }
-
      
      //while( input_len > 0 )
      {
@@ -313,11 +359,10 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
             uint64_t stream_offset = 0;
             StreamingBufferGetData( sb, &data, &data_len, &stream_offset );
 
-            /* Try to Match TDS header: 0F 00 | 0F 01 , input_len >= 8 */
-            bIsLast = FALSE;
-            // ...  
+            /* Try to Match TDS header: 0F 00 | 0F 01 , input_len >= 8 */   
+            nHeadOffset = FindTdsHead( data, data_len ); 
             
-            // ...  Found: nHeadOffset >= 0 , Not Found: nHeadOffset < 0 
+            // Found: nHeadOffset >= 0 , Not Found: nHeadOffset < 0 
             if( nHeadOffset < 0 )
                 break; 
 
@@ -331,24 +376,21 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
                 /* Full packet arrived ? */
                 uint16_t nTdsPacketLen = data[2]*0x100 +  data[3];
                 if( data_len >= nTdsPacketLen ) {
-
-                    /* Backup tail data(may be belong to next packet) */
                     const uint8_t *tail_data = NULL;
                     uint32_t tail_data_len = 0;
-                    uint8_t *tail_buffer = NULL;
-                    if( StreamingBufferGetDataAtOffset ( sb, &tail_data, &tail_data_len, nTdsPacketLen ) ) {
-                        tail_buffer = SCCalloc(1, tail_data_len );
-                        memcpy( tail_buffer, tail_data, tail_data_len );
-                    }
 
                     /* LAST */
                     if( data[0] == 0x0F && data[1] == 0x01 ) {
                         // log packet info:
-                        // 1. reassemble all TDS packets in state->tdsRequestPackets
+                        // 1. reassemble all TDS packets in tds->tdsRequestPackets
                         // 2. log packet info 
+                        char *pStr = FetchPrintableString( data, data_len, '/' );
+                        SCFree( pStr );
                         // ...
-                        // Free all packets buffered in state->tdsRequestPackets
-                        // ...
+
+                        // Free all packets buffered in tds->tdsRequestPackets
+                        TdsSessionPacketFree( &tds->tdsRequestPackets );
+
                         // Reset packet state to TDS_PACKET_STATE_NEW
                         if( data_len > nTdsPacketLen ) {
                             if( StreamingBufferGetDataAtOffset ( sb, &tail_data, &tail_data_len, nTdsPacketLen ) ) {
@@ -360,7 +402,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
                     }
                     /* NEXT */
                     else {
-                        // Nothing to do but:
+                        // Nothing to do but: Start a new tds packet fragment. 
                         if( data_len > nTdsPacketLen ) {
                             if( StreamingBufferGetDataAtOffset ( sb, &tail_data, &tail_data_len, nTdsPacketLen ) ) {
                                 if( !InitTdsPacketFragment( tds, tail_data, tail_data_len ) )
