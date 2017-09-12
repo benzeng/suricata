@@ -59,13 +59,13 @@
 /*
     Note: Returned pointer should be freed.
 */
-char * FetchPrintableString( const char *pHexBuffer, uint32_t nBufferLen, char space )
+static uint8_t* FetchPrintableString( const uint8_t *pHexBuffer, uint32_t nBufferLen, char space )
 {
     char bFlag = 0;
     uint32_t i = 0, j=0;
-    char *pOutput = SCFree( 1, strlen(pHexBuffer ) );
+    uint8_t *pOutput = SCCalloc( 1, nBufferLen );
     
-    memset( pOutput, 0, strlen(pHexBuffer) );
+    memset( pOutput, 0, nBufferLen );
     for( i=0; i<nBufferLen; ++i ) {
         if( pHexBuffer[i] < 0x20  || pHexBuffer[i] >= 0x7F ) {
             if( !bFlag ) {
@@ -81,7 +81,7 @@ char * FetchPrintableString( const char *pHexBuffer, uint32_t nBufferLen, char s
     }
 
     pOutput[j++] = 0;
-	return (pOutput);
+    return (pOutput);
 }
  
  
@@ -159,8 +159,10 @@ char * FetchPrintableString( const char *pHexBuffer, uint32_t nBufferLen, char s
  }
  
 
- static void TdsSessionPacketFree( TdsSessionPacketList *pPacketList )
+ static void TdsSessionPacketFree( void *pList )
  {
+    struct TdsSessionPacketList *pPacketList = (struct TdsSessionPacketList *)pList;
+
     TdsSessionPacket *pSessionPacket = NULL;
     StreamingBufferNode *pStreamBufNode = NULL;
 
@@ -181,9 +183,6 @@ char * FetchPrintableString( const char *pHexBuffer, uint32_t nBufferLen, char s
  {
      TDSState *tds_state = state;
      SCLogNotice("Freeing TDS state.");
-
-     TdsSessionPacket *pSessionPacket = NULL;
-     StreamingBufferNode *pStreamBufNode = NULL;
 
      // For Request 
      TdsSessionPacketFree( &tds_state->tdsRequestPackets );
@@ -288,7 +287,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
  /* Try to Match TDS header: 0F 00 | 0F 01 , data_len >= 8 */   
  static int FindTdsHead( const uint8_t *data, uint32_t data_len )
  {
-    int i = 0;
+    uint32_t i = 0;
 
     if( data_len < 8 )
          return -1;
@@ -384,7 +383,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
                         // log packet info:
                         // 1. reassemble all TDS packets in tds->tdsRequestPackets
                         // 2. log packet info 
-                        char *pStr = FetchPrintableString( data, data_len, '/' );
+                        uint8_t *pStr = FetchPrintableString( data, data_len, '/' );
                         SCFree( pStr );
                         // ...
 
