@@ -90,7 +90,7 @@ typedef struct TdsTransaction_ {
     uint16_t tdsResponsePacketState;
 
     TAILQ_HEAD( TdsFragmentPacketList, TdsFragmentPacket_ )  tdsRequestPacket;
-    TAILQ_HEAD( , TdsFragmentPacket_ )  tdsRespondsPacket;
+    struct TdsFragmentPacketList tdsRespondsPacket;
     uint8_t bRequestComplete;
     uint8_t bResponseComplete;
 
