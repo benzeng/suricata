@@ -103,7 +103,6 @@ static uint8_t* FetchPrintableString( const uint8_t *pHexBuffer, uint32_t nBuffe
  
  static AppLayerDecoderEvents *TdsGetEvents(void *state, uint64_t tx_id)
  {
-/*     
     TDSState *tds_state = state;
     TDSTransaction *tx;
  
@@ -111,8 +110,7 @@ static uint8_t* FetchPrintableString( const uint8_t *pHexBuffer, uint32_t nBuffe
          if (tx->tx_id == tx_id) {
              return tx->decoder_events;
          }
-     }
-*/ 
+     } 
      return NULL;
  }
  
@@ -144,6 +142,54 @@ static uint8_t* FetchPrintableString( const uint8_t *pHexBuffer, uint32_t nBuffe
 
 /* TDSState Private methods */
  
+static void TdsTxPacketFree( void *pList )
+{
+   struct TdsFragmentPacketList *pPacketList = (struct TdsFragmentPacketList *)pList;
+
+   TdsFragmentPacket *pFragment = NULL;
+
+   while ((pFragment = (TdsFragmentPacket *)TAILQ_FIRST(pPacketList)) != NULL) {
+       TAILQ_REMOVE(pPacketList, pFragment, next);
+       SCFree( pFragment->pfragmentBuffer );
+       SCFree(pFragment);
+   }
+}
+
+static TdsTransaction *TdsTxAlloc(TDSState *tds)
+{
+    TdsTransaction *tx = SCCalloc(1, sizeof(TdsTransaction));
+    if (unlikely(tx == NULL)) {
+        return NULL;
+    }
+    memset( tx, 0, sizeof(TdsTransaction) );
+
+    /* Increment the transaction ID on the state each time one is
+     * allocated. */
+    tx->tx_id = tds->transaction_max++;
+    tds->curr =  tx;
+
+    TAILQ_INIT(&tx->tdsRequestPacket);
+    TAILQ_INIT(&tx->tdsRespondsPacket);
+
+    TAILQ_INSERT_TAIL(&tds->tx_list, tx, next);
+    return tx;
+}
+
+static void TdsTxFree(void *tx)
+{
+    TdsTransaction *tds_tx = tx;
+
+    // For Request 
+    TdsTxPacketFree( &tds_tx->tdsRequestPacket );
+     
+    // For Response
+    TdsTxPacketFree( &tds_tx->tdsRespondsPacket );
+
+    AppLayerDecoderEventsFreeEvents( &tds_tx->decoder_events );
+
+    SCFree(tx);
+}
+
  static void *TdsStateAlloc(void)
  {
      SCLogNotice("Allocating TDS state.");
@@ -153,137 +199,131 @@ static uint8_t* FetchPrintableString( const uint8_t *pHexBuffer, uint32_t nBuffe
      }
      memset( state, 0, sizeof( TDSState ) );
 
-     TAILQ_INIT(&state->tdsRequestPackets);
-     TAILQ_INIT(&state->tdsRespondsPackets);
+     state->sbcfg->flags = STREAMING_BUFFER_NOFLAGS;
+     state->sbcfg->buf_slide = 2048;
+     state->sbcfg->buf_size = 4096;
+
+     sbRequest = StreamingBufferInit( &state->sbcfg );
+     sbResponse = StreamingBufferInit( &state->sbcfg );
+
+     TAILQ_INIT(&state->tx_list);
      return state;
  }
  
-
- static void TdsSessionPacketFree( void *pList )
- {
-    struct TdsSessionPacketList *pPacketList = (struct TdsSessionPacketList *)pList;
-
-    TdsSessionPacket *pSessionPacket = NULL;
-    StreamingBufferNode *pStreamBufNode = NULL;
-
-    while ((pSessionPacket = (TdsSessionPacket *)TAILQ_FIRST(pPacketList)) != NULL) {
-        TAILQ_REMOVE(pPacketList, pSessionPacket, next);
-
-        while((pStreamBufNode = (StreamingBufferNode *)TAILQ_FIRST(&pSessionPacket->tdsSessionPacketFragments)) != NULL ) {
-           TAILQ_REMOVE(&pSessionPacket->tdsSessionPacketFragments, pStreamBufNode, next);
-           StreamingBufferFree( pStreamBufNode->sb );
-           SCFree( pStreamBufNode );
-        }
-
-        SCFree(pSessionPacket);
-    }
- }
-
  static void TdsStateFree(void *state)
  {
      TDSState *tds_state = state;
+     TdsTransaction *tx;
      SCLogNotice("Freeing TDS state.");
 
-     // For Request 
-     TdsSessionPacketFree( &tds_state->tdsRequestPackets );
-     
-     // For Response
-     TdsSessionPacketFree( &tds_state->tdsRespondsPackets );
+     while ((tx = TAILQ_FIRST(&tds_state->tx_list)) != NULL) {
+        TAILQ_REMOVE(&tds_state->tx_list, tx, next);
+        TdsTxFree(tx);
+     }
+
+     StreamingBufferFree( sbRequest );
+     StreamingBufferFree( sbResponse );
      
      SCFree(tds_state);
  }
- 
 
-/*
-TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
-{
-    DO WHILE( tdsSessionDataLen > 0 ):
-    {
-        switch(tdsPacketState)
-        {
-            case TDS_PACKET_STATE_NEW:
-            1. 识别TDS协议数据包头部标记：0F[01|00], 找到TDS协议包头位置：nHeadOffset, bIsLast。如果找不到TDS头部标记，则丢弃收到的数据。
-               新建一个tdsSessionPacket：tdsCurrentSessionPacket, 插入tdsSessionPacketList。
-            2. 取得TDS协议包的长度：nTdsPacketLen, 确定可以添加到StreamBuffer中的数据长度：nLen=MIN(nTdsPacketLen, tdsSessionDataLen-nHeadOffset)
-            3. 新建一个SB: sbTdsPacketCurrent，添加数据到SB：StreamingBufferAppend: sbTdsPacketCurrent, tdsRequestData+nHeadOffset, nLen 
-               把新sbTdsPacketCurrent插入当前tdsCurrentSessionPacket链表。 
-               nTdsPacketLen -= nLen;           
-            4. 如果接收了完整的TDS协议分片包: nTdsPacketLen==0, 保持tdsPacketState为TDS_PACKET_STATE_NEW，准备接收下一个分片数据包。
-            5. 如果没有收完一个完整的TDS协议包:nTdsPacketLen!=0，设置tdsPacketState状态：TDS_PACKET_STATE_FRAGMENT，准备接碎片。
 
-            case TDS_PACKET_STATE_FRAGMENT:
-            1. nLen = MIN( tdsSessionDataLen, nTdsPacketLen);
-            2. 添加数据到SB：StreamingBufferAppend: sbTdsPacketCurrent, tdsRequestData, nLen
-            3. nTdsPacketLen -= nLen; 
-            4. 如果接收了完整的TDS协议分片包: nTdsPacketLen==0 
-                if( bIsLast ) tdsPacketState = TDS_PACKET_STATE_NEW;
-                if( !bIsLast ) tdsPacketState = TDS_PACKET_STATE_NEXT;
+ static void TdsStateTxFree(void *state, uint64_t tx_id)
+ {
+    TDSState *tds = state;
+    TdsTransaction *tx = NULL, *ttx;
 
-            case TDS_PACKET_STATE_NEXT:
-            1. 识别TDS协议数据包头部标记：0F[01|00], 找到TDS协议包头位置：nHeadOffset, bIsLast。如果找不到TDS头部标记，则丢弃收到的数据。
-            2. 取得TDS协议包的长度：nTdsPacketLen, 确定可以添加到StreamBuffer中的数据长度：nLen=MIN(nTdsPacketLen, tdsSessionDataLen-nHeadOffset)
-            3. 新建一个SB: sbTdsPacketCurrent，添加数据到SB：StreamingBufferAppend: sbTdsPacketCurrent, tdsRequestData+nHeadOffset, nLen 
-               把新sbTdsPacketCurrent插入当前tdsCurrentSessionPacket链表。 
-               nTdsPacketLen -= nLen;   
-            4. 如果接收了完整的TDS协议分片包: nTdsPacketLen==0, 
-               if( bIsLast ) tdsPacketState = TDS_PACKET_STATE_NEW;
-               if( !bIsLast ) tdsPacketState = TDS_PACKET_STATE_NEXT;
-            5. 如果没有收完一个完整的TDS协议包:nTdsPacketLen!=0，设置tdsPacketState状态：TDS_PACKET_STATE_FRAGMENT，准备接碎片。
+    TAILQ_FOREACH_SAFE(tx, &tds->tx_list, next, ttx) {
+        if (tx->tx_id != tx_id) {
+            continue;
         }
 
-        tdsSessionDataLen -= nLen;
-        tdsSessionData += nLen;
+        TAILQ_REMOVE(&tds->tx_list, tx, next);
+        TdsTxFree(tx);
+        break;
     }
-}
-*/
- static int InitTdsPacketList( TDSState *tds, const uint8_t *input, uint32_t input_len )
- {
-    StreamingBufferNode *sbNode = NULL;
-    StreamingBuffer *sb = NULL;
-    StreamingBufferSegment seg;
-    TdsSessionPacket *tdsSessionPacket = NULL;
-    StreamingBufferConfig cfg = { STREAMING_BUFFER_NOFLAGS, 2048, 4096, NULL, NULL, NULL, NULL };
-    
-    sb = StreamingBufferInit(&cfg);
-    //FAIL_IF(sb == NULL);
-    sbNode = SCCalloc( 1, sizeof(StreamingBufferNode) );
-    sbNode->sb = sb;
 
-    int nRc = StreamingBufferAppend( sb , &seg, input, input_len );
-    if( nRc < 0 ) 
-        return 0;
-
-    tdsSessionPacket = SCCalloc(1, sizeof(TdsSessionPacket));
-    TAILQ_INIT( &tdsSessionPacket->tdsSessionPacketFragments );
-    TAILQ_INSERT_TAIL(&tdsSessionPacket->tdsSessionPacketFragments, sbNode, next);
-    TAILQ_INSERT_TAIL(&tds->tdsRequestPackets, tdsSessionPacket, next);
-
-    return 1;
+    SCReturn;
  }
 
- static int InitTdsPacketFragment( TDSState *tds, const uint8_t *input, uint32_t input_len )
+ static void TdsSetTxLogged(void *state, void *vtx, uint32_t logger)
  {
-    StreamingBufferNode *sbNode = NULL;
-    StreamingBuffer *sb = NULL;
-    StreamingBufferSegment seg;
-    TdsSessionPacket *tdsSessionPacket = NULL;
-    StreamingBufferConfig cfg = { STREAMING_BUFFER_NOFLAGS, 2048, 4096, NULL, NULL, NULL, NULL };
+     TdsTransaction *tx = (TdsTransaction *)vtx;
+     tx->logged |= logger;
+ }
 
-    tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacketList );
+ static int TdsGetTxLogged(void *state, void *vtx, uint32_t logger)
+ {
+    TdsTransaction *tx = (TdsTransaction *)vtx;
+    if (tx->logged & logger)
+         return 1;
  
-    sb = StreamingBufferInit(&cfg);
-    //FAIL_IF(sb == NULL);
-    sbNode = SCCalloc( 1, sizeof(StreamingBufferNode) );
-    sbNode->sb = sb;
-    
-    int nRc = StreamingBufferAppend( sb , &seg, input, input_len );
-    if( nRc < 0 ) 
-        return 0;
+    return 0;
+ }
 
-    TAILQ_INSERT_TAIL(&tdsSessionPacket->tdsSessionPacketFragments, sbNode, next);
+ static int TdsGetAlstateProgressCompletionStatus(uint8_t direction) 
+ {
     return 1;
  }
 
+ static int TdsGetStateProgress(void *tx, uint8_t direction)
+ {
+    TdsTransaction *tds = (TdsTransaction *)tx;
+    int retval = 0;
+
+    if (direction & STREAM_TOCLIENT && tds->bResponseComplete) {
+        retval = 1;
+    }
+    else if (direction & STREAM_TOSERVER && tds->bRequestComplete) {
+        retval = 1;
+    }
+
+    SCReturnInt(retval);
+ }
+
+ static uint64_t TdsGetTxCnt(void *state)
+ {
+    SCEnter();
+    uint64_t count = ((uint64_t)((TDSState *)state)->transaction_max);
+    SCReturnUInt(count);
+ }
+
+ static void *TdsGetTx(void *state, uint64_t tx_id)
+ {
+    TDSState *tds = state;
+    TdsTransaction *tx = NULL;
+
+    if (state->curr && state->curr->tx_id == (tx_id)) {
+        SCReturnPtr(state->curr, "void");
+    }
+
+    TAILQ_FOREACH(tx, &state->tx_list, next) {
+        if (tx_id != tx->tx_id) {
+            continue;
+        }
+        SCReturnPtr(tx, "void");
+    }
+
+    SCReturnPtr(NULL, "void");
+ }
+
+
+ static DetectEngineState *TdsGetTxDetectState(void *vtx)
+ {
+    TDSState *tx = vtx;
+    return tx->de_state;
+ }
+
+
+ static int TemplateSetTxDetectState(void *state, void *vtx,
+     DetectEngineState *s)
+ {
+    TDSState *tx = vtx;
+    tx->de_state = s;
+    return 0;
+ }
+
+ 
  /* Try to Match TDS header: 0F 00 | 0F 01 , data_len >= 8 */   
  static int FindTdsHead( const uint8_t *data, uint32_t data_len )
  {
@@ -308,9 +348,7 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
      AppLayerParserState *pstate, uint8_t *input, uint32_t input_len,
      void *local_data)
  {
-    StreamingBufferNode *sbNode = NULL;
-     TdsSessionPacket *tdsSessionPacket = NULL;
-     StreamingBuffer *sb = NULL;
+     TdsFragmentPacket *tdsFragmentPacket = NULL;
      StreamingBufferSegment seg;
      int32_t nHeadOffset = 0;
      TDSState *tds = (TDSState *)state;
@@ -328,92 +366,62 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
      if (input == NULL || input_len == 0) {
          return 0;
      }
-     
-     //while( input_len > 0 )
-     {
-         switch( tds->tdsRequestPacketState ){
-            case TDS_PACKET_STATE_NEW:
-            if( !InitTdsPacketList( tds, input, input_len ) )
-                return 0;
 
-            tds->tdsRequestPacketState = TDS_PACKET_STATE_FRAGMENT;
-            input_len = 0;
-            /*
-            Fall Throught
-            break;
-            */
-            case TDS_PACKET_STATE_FRAGMENT:
-            if( input_len > 0 ) {
-                tdsSessionPacket = TAILQ_LAST( &tds->tdsRequestPackets, TdsSessionPacketList );
-                sbNode = TAILQ_LAST( &tdsSessionPacket->tdsSessionPacketFragments, StreamingBufferNodeList );
-                sb = sbNode->sb;
-
-                int nRc = StreamingBufferAppend( sb , &seg, input, input_len );
-                if( nRc < 0 ) 
-                    return 0;
-            }
-
-            const uint8_t *data = NULL;
-            uint32_t data_len = 0;
-            uint64_t stream_offset = 0;
-            StreamingBufferGetData( sb, &data, &data_len, &stream_offset );
-
-            /* Try to Match TDS header: 0F 00 | 0F 01 , input_len >= 8 */   
-            nHeadOffset = FindTdsHead( data, data_len ); 
-            
-            // Found: nHeadOffset >= 0 , Not Found: nHeadOffset < 0 
-            if( nHeadOffset < 0 )
-                break; 
-
-            {
-                // Skip head garbage
-                StreamingBufferSlide( sb, nHeadOffset );
-                StreamingBufferGetData( sb, &data, &data_len, &stream_offset );
-                if( data_len < 8 )
-                    break;
-                
-                /* Full packet arrived ? */
-                uint16_t nTdsPacketLen = data[2]*0x100 +  data[3];
-                if( data_len >= nTdsPacketLen ) {
-                    const uint8_t *tail_data = NULL;
-                    uint32_t tail_data_len = 0;
-
-                    /* LAST */
-                    if( data[0] == 0x0F && data[1] == 0x01 ) {
-                        // log packet info:
-                        // 1. reassemble all TDS packets in tds->tdsRequestPackets
-                        // 2. log packet info 
-                        uint8_t *pStr = FetchPrintableString( data, data_len, '/' );
-                        SCFree( pStr );
-                        // ...
-
-                        // Free all packets buffered in tds->tdsRequestPackets
-                        TdsSessionPacketFree( &tds->tdsRequestPackets );
-
-                        // Reset packet state to TDS_PACKET_STATE_NEW
-                        if( data_len > nTdsPacketLen ) {
-                            if( StreamingBufferGetDataAtOffset ( sb, &tail_data, &tail_data_len, nTdsPacketLen ) ) {
-                                if( !InitTdsPacketList( tds, tail_data, tail_data_len ) )
-                                    return 0;
-                            }
-                        }
-                        tds->tdsRequestPacketState = TDS_PACKET_STATE_NEW;                            
-                    }
-                    /* NEXT */
-                    else {
-                        // Nothing to do but: Start a new tds packet fragment. 
-                        if( data_len > nTdsPacketLen ) {
-                            if( StreamingBufferGetDataAtOffset ( sb, &tail_data, &tail_data_len, nTdsPacketLen ) ) {
-                                if( !InitTdsPacketFragment( tds, tail_data, tail_data_len ) )
-                                    return 0;
-                            }
-                        }
-                    }
-                }
-            }
-            break;
-         }
+     if( StreamingBufferAppend( tds->sbRequest , &seg, input, input_len ) < 0 ) {
+         return 0;
      }
+
+     do {
+        const uint8_t *data = NULL;
+        uint32_t data_len = 0;
+        uint64_t stream_offset = 0;
+        StreamingBufferGetData( tds->sbRequest, &data, &data_len, &stream_offset );
+   
+        /* Try to Match TDS header: 0F 00 | 0F 01 , input_len >= 8 */   
+        nHeadOffset = FindTdsHead( data, data_len ); 
+        if( nHeadOffset < 0 ) {
+            break;
+        }
+   
+        StreamingBufferSlide( tds->sbRequest, nHeadOffset );
+        StreamingBufferGetData( tds->sbRequest, &data, &data_len, &stream_offset );
+        if( data_len < (8+1) ) {
+            break;
+        }
+        /* Full packet arrived ? */
+        uint16_t nTdsPacketLen = data[2]*0x100 +  data[3];
+        if( data_len < nTdsPacketLen ) {
+            break;
+        }
+   
+        /* Allocate a transaction */
+        if( NULL == tds->curr || data[9] == 0x21 ) {
+           TdsTransaction *tx = TdsTxAlloc( tds );
+           if( NULL == tx ) {
+                break;
+           }
+        }
+        TdsFragmentPacket *pFragment = SCCalloc( 1, sizeof(TdsFragmentPacket) );
+        pFragment->pfragmentBuffer = SCCalloc( nTdsPacketLen, sizeof(uint8_t) );;
+        pFragment->nFragmentLen = nTdsPacketLen;
+        memcpy( pFragment->pfragmentBuffer, data, nTdsPacketLen );
+        TAILQ_INSERT_TAIL(&tds->curr->tdsRequestPacket, pFragment, next);  
+
+        if( data[1] == 0x01 )
+            tds->curr->bRequestComplete = 1;
+            
+         /* Not all data was processed ? */
+         StreamingBufferSlide( tds->sbRequest, nTdsPacketLen );
+     }
+     while(1);
+     
+/*
+    // log packet info:
+    // 1. reassemble all TDS packets in tds->tdsRequestPackets
+    // 2. log packet info 
+    uint8_t *pStr = FetchPrintableString( data, data_len, '/' );
+    SCFree( pStr );                       
+*/
 
  end:    
      return 0;
@@ -422,12 +430,83 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
  static int TdsParseResponse(Flow *f, void *state, AppLayerParserState *pstate,
      uint8_t *input, uint32_t input_len, void *local_data)
  {
- 
- 
- end:
-     return 0;
+    TdsFragmentPacket *tdsFragmentPacket = NULL;
+    StreamingBufferSegment seg;
+    int32_t nHeadOffset = 0;
+    TDSState *tds = (TDSState *)state;
+    
+
+    SCLogNotice("Parsing TDS response: len=%"PRIu32, input_len);
+
+    /* Likely connection closed, we can just return here. */
+    if ((input == NULL || input_len == 0) &&
+        AppLayerParserStateIssetFlag(pstate, APP_LAYER_PARSER_EOF)) {
+        return 0;
+    }
+
+    /* Probably don't want to create a transaction in this case either. */
+    if (input == NULL || input_len == 0) {
+        return 0;
+    }
+
+    if( StreamingBufferAppend( tds->sbResponse , &seg, input, input_len ) < 0 ) {
+        return 0;
+    }
+
+    do {
+       const uint8_t *data = NULL;
+       uint32_t data_len = 0;
+       uint64_t stream_offset = 0;
+       StreamingBufferGetData( tds->sbResponse, &data, &data_len, &stream_offset );
+  
+       /* Try to Match TDS header: 0F 00 | 0F 01 , input_len >= 8 */   
+       nHeadOffset = FindTdsHead( data, data_len ); 
+       if( nHeadOffset < 0 ) {
+           break;
+       }
+  
+       StreamingBufferSlide( tds->sbResponse, nHeadOffset );
+       StreamingBufferGetData( tds->sbResponse, &data, &data_len, &stream_offset );
+       if( data_len < 8 ) {
+            break;
+       }
+       /* Full packet arrived ? */
+       uint16_t nTdsPacketLen = data[2]*0x100 +  data[3];
+       if( data_len < nTdsPacketLen ) {
+           break;
+       }
+  
+       /* Must have a transaction */
+       if( NULL == tds->curr ) {
+           break;
+       }
+       TdsFragmentPacket *pFragment = SCCalloc( 1, sizeof(TdsFragmentPacket) );
+       pFragment->pfragmentBuffer = SCCalloc( nTdsPacketLen, sizeof(uint8_t) );;
+       pFragment->nFragmentLen = nTdsPacketLen;
+       memcpy( pFragment->pfragmentBuffer, data, nTdsPacketLen );
+       TAILQ_INSERT_TAIL(&tds->curr->tdsRespondsPacket, pFragment, next);  
+
+       if( data[1] == 0x01 )
+           tds->curr->bResponseComplete = 1;
+           
+        /* Not all data was processed ? */
+        StreamingBufferSlide( tds->sbResponse, nTdsPacketLen );
+    }
+    while(1);
+    
+/*
+   // log packet info:
+   // 1. reassemble all TDS packets in tds->tdsRequestPackets
+   // 2. log packet info 
+   uint8_t *pStr = FetchPrintableString( data, data_len, '/' );
+   SCFree( pStr );                       
+*/
+
+end:    
+    return 0;
  }
- 
+
+
  
  void RegisterTdsParsers(void)
  {
@@ -496,36 +575,36 @@ TdsSessionDataInput( tdsSessionData, tdsSessionDataLen )
  
          /* Register a function to be called by the application layer
           * when a transaction is to be freed. */
-         //AppLayerParserRegisterTxFreeFunc(IPPROTO_TCP, ALPROTO_TDS,
-         //    TdsStateTxFree);
+         AppLayerParserRegisterTxFreeFunc(IPPROTO_TCP, ALPROTO_TDS,
+             TdsStateTxFree);
  
-         //AppLayerParserRegisterLoggerFuncs(IPPROTO_TCP, ALPROTO_TDS,
-         //    TdsGetTxLogged, TdsSetTxLogged);
+         AppLayerParserRegisterLoggerFuncs(IPPROTO_TCP, ALPROTO_TDS,
+             TdsGetTxLogged, TdsSetTxLogged);
  
          /* Register a function to return the current transaction count. */
-         //AppLayerParserRegisterGetTxCnt(IPPROTO_TCP, ALPROTO_TDS,
-         //    TdsGetTxCnt);
+         AppLayerParserRegisterGetTxCnt(IPPROTO_TCP, ALPROTO_TDS,
+             TdsGetTxCnt);
  
          /* Transaction handling. */
-         //AppLayerParserRegisterGetStateProgressCompletionStatus(ALPROTO_TDS,
-         //    TdsGetAlstateProgressCompletionStatus);
-         //AppLayerParserRegisterGetStateProgressFunc(IPPROTO_TCP,
-         //    ALPROTO_TDS, TdsGetStateProgress);
-         //AppLayerParserRegisterGetTx(IPPROTO_TCP, ALPROTO_TDS,
-         //    TdsGetTx);
+         AppLayerParserRegisterGetStateProgressCompletionStatus(ALPROTO_TDS,
+             TdsGetAlstateProgressCompletionStatus);
+         AppLayerParserRegisterGetStateProgressFunc(IPPROTO_TCP,
+             ALPROTO_TDS, TdsGetStateProgress);
+         AppLayerParserRegisterGetTx(IPPROTO_TCP, ALPROTO_TDS,
+             TdsGetTx);
  
          /* Application layer event handling. */
-         //AppLayerParserRegisterHasEventsFunc(IPPROTO_TCP, ALPROTO_TDS,
-         //    TdsHasEvents);
+         AppLayerParserRegisterHasEventsFunc(IPPROTO_TCP, ALPROTO_TDS,
+             TdsHasEvents);
  
          /* What is this being registered for? */
-         //AppLayerParserRegisterDetectStateFuncs(IPPROTO_TCP, ALPROTO_TDS,
-         //    NULL, TdsGetTxDetectState, TdsSetTxDetectState);
+         AppLayerParserRegisterDetectStateFuncs(IPPROTO_TCP, ALPROTO_TDS,
+             NULL, TdsGetTxDetectState, TdsSetTxDetectState);
  
-         //AppLayerParserRegisterGetEventInfo(IPPROTO_TCP, ALPROTO_TDS,
-         //    TdsStateGetEventInfo);
-         //AppLayerParserRegisterGetEventsFunc(IPPROTO_TCP, ALPROTO_TDS,
-         //    TdsGetEvents);
+         AppLayerParserRegisterGetEventInfo(IPPROTO_TCP, ALPROTO_TDS,
+             TdsStateGetEventInfo);
+         AppLayerParserRegisterGetEventsFunc(IPPROTO_TCP, ALPROTO_TDS,
+             TdsGetEvents);
      }
      else {
          SCLogNotice("TDS protocol parsing disabled.");

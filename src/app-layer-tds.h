@@ -55,17 +55,14 @@ void main(void)
 }
 */
 
-typedef struct StreamingBufferNode_ {
-    StreamingBuffer *sb;
-    TAILQ_ENTRY(StreamingBufferNode_) next;
-}StreamingBufferNode;
 
+typedef struct TdsFragmentPacket_ {
+    TAILQ_ENTRY(TdsFragmentPacket_) next;
 
-typedef struct TdsSessionPacket_ {
-    TAILQ_ENTRY(TdsSessionPacket_) next;
-
-    TAILQ_HEAD( StreamingBufferNodeList, StreamingBufferNode_ ) tdsSessionPacketFragments;
-}TdsSessionPacket;
+    //StreamingBuffer *sb;
+    uint8_t *pfragmentBuffer; 
+    uint32_t nFragmentLen;
+}TdsFragmentPacket;
 
 /* Packet stream input state */
 #define TDS_PACKET_STATE_NEW      0
@@ -73,28 +70,43 @@ typedef struct TdsSessionPacket_ {
 #define TDS_PACKET_STATE_NEXT     2
 
 
-typedef struct TDSState_ {
+typedef struct TdsTransaction_ {
 
-    StreamingBufferConfig sbcfg;
+    uint64_t tx_id;                        /*<< Internal transaction ID. */
 
-    uint16_t events;                       /**< Number of application layer events created for this state. */
     AppLayerDecoderEvents *decoder_events; /*<< Application layer events that occurred while parsing this transaction. */
     uint8_t response_done;                 /*<< Flag to be set when the response is seen. */
     DetectEngineState *de_state;
     uint32_t logged;                        /* flags indicating which loggers that have logged */
               
     /* TDS Connection Info */
-    uint32_t SrcIp;
-    uint32_t SrcPort;
-    uint32_t DestIp;
-    uint32_t DestPort;
+    uint32_t nSrcIp;
+    uint32_t nSrcPort;
+    uint32_t nDestIp;
+    uint32_t nDestPort;
 
     uint16_t tdsRequestPacketState;
     uint16_t tdsResponsePacketState;
 
-    TAILQ_HEAD( TdsSessionPacketList, TdsSessionPacket_ )  tdsRequestPackets;
-    TAILQ_HEAD( , TdsSessionPacket_ )  tdsRespondsPackets;
+    TAILQ_HEAD( TdsFragmentPacketList, TdsFragmentPacket_ )  tdsRequestPacket;
+    TAILQ_HEAD( , TdsFragmentPacket_ )  tdsRespondsPacket;
+    uint8_t bRequestComplete;
+    uint8_t bResponseComplete;
 
+}TdsTransaction;
+
+typedef struct TDSState_ {
+
+    TAILQ_HEAD(, TdsTransaction_) tx_list; 
+
+    TdsTransaction *curr;                  /**< Current transaction. */
+    StreamingBufferConfig sbcfg;
+    StreamingBuffer *sbRequest;            /* Request buffer for buffering incomplete request PDUs received over TCP. */
+    StreamingBuffer *sbResponse;
+
+    uint64_t transaction_max;
+    uint16_t events;                       /**< Number of application layer events created for this state. */
+    
 } TDSState;
 
 
