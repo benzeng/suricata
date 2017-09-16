@@ -104,7 +104,7 @@ static uint8_t* FetchPrintableString( const uint8_t *pHexBuffer, uint32_t nBuffe
  static AppLayerDecoderEvents *TdsGetEvents(void *state, uint64_t tx_id)
  {
     TDSState *tds_state = state;
-    TDSTransaction *tx;
+    struct TdsTransaction_ *tx;
  
      TAILQ_FOREACH(tx, &tds_state->tx_list, next) {
          if (tx->tx_id == tx_id) {
@@ -157,7 +157,7 @@ static void TdsTxPacketFree( void *pList )
 
 static TdsTransaction *TdsTxAlloc(TDSState *tds)
 {
-    TdsTransaction *tx = SCCalloc(1, sizeof(TdsTransaction));
+    struct TdsTransaction_ *tx = SCCalloc(1, sizeof(TdsTransaction));
     if (unlikely(tx == NULL)) {
         return NULL;
     }
@@ -199,12 +199,12 @@ static void TdsTxFree(void *tx)
      }
      memset( state, 0, sizeof( TDSState ) );
 
-     state->sbcfg->flags = STREAMING_BUFFER_NOFLAGS;
-     state->sbcfg->buf_slide = 2048;
-     state->sbcfg->buf_size = 4096;
+     state->sbcfg.flags = STREAMING_BUFFER_NOFLAGS;
+     state->sbcfg.buf_slide = 2048;
+     state->sbcfg.buf_size = 4096;
 
-     sbRequest = StreamingBufferInit( &state->sbcfg );
-     sbResponse = StreamingBufferInit( &state->sbcfg );
+     state->sbRequest = StreamingBufferInit( &state->sbcfg );
+     state->sbResponse = StreamingBufferInit( &state->sbcfg );
 
      TAILQ_INIT(&state->tx_list);
      return state;
@@ -221,8 +221,8 @@ static void TdsTxFree(void *tx)
         TdsTxFree(tx);
      }
 
-     StreamingBufferFree( sbRequest );
-     StreamingBufferFree( sbResponse );
+     StreamingBufferFree( tds_state->sbRequest );
+     StreamingBufferFree( tds_state->sbResponse );
      
      SCFree(tds_state);
  }
@@ -291,13 +291,13 @@ static void TdsTxFree(void *tx)
  static void *TdsGetTx(void *state, uint64_t tx_id)
  {
     TDSState *tds = state;
-    TdsTransaction *tx = NULL;
+    struct TdsTransaction_ *tx = NULL;
 
-    if (state->curr && state->curr->tx_id == (tx_id)) {
-        SCReturnPtr(state->curr, "void");
+    if (tds->curr && tds->curr->tx_id == (tx_id)) {
+        SCReturnPtr(tds->curr, "void");
     }
 
-    TAILQ_FOREACH(tx, &state->tx_list, next) {
+    TAILQ_FOREACH(tx, &tds->tx_list, next) {
         if (tx_id != tx->tx_id) {
             continue;
         }
@@ -310,15 +310,15 @@ static void TdsTxFree(void *tx)
 
  static DetectEngineState *TdsGetTxDetectState(void *vtx)
  {
-    TDSState *tx = vtx;
+    TdsTransaction *tx = vtx;
     return tx->de_state;
  }
 
 
- static int TemplateSetTxDetectState(void *state, void *vtx,
+ static int TdsSetTxDetectState(void *state, void *vtx,
      DetectEngineState *s)
  {
-    TDSState *tx = vtx;
+    TdsTransaction *tx = vtx;
     tx->de_state = s;
     return 0;
  }
@@ -348,7 +348,6 @@ static void TdsTxFree(void *tx)
      AppLayerParserState *pstate, uint8_t *input, uint32_t input_len,
      void *local_data)
  {
-     TdsFragmentPacket *tdsFragmentPacket = NULL;
      StreamingBufferSegment seg;
      int32_t nHeadOffset = 0;
      TDSState *tds = (TDSState *)state;
@@ -423,14 +422,12 @@ static void TdsTxFree(void *tx)
     SCFree( pStr );                       
 */
 
- end:    
      return 0;
  }
  
  static int TdsParseResponse(Flow *f, void *state, AppLayerParserState *pstate,
      uint8_t *input, uint32_t input_len, void *local_data)
  {
-    TdsFragmentPacket *tdsFragmentPacket = NULL;
     StreamingBufferSegment seg;
     int32_t nHeadOffset = 0;
     TDSState *tds = (TDSState *)state;
@@ -502,7 +499,6 @@ static void TdsTxFree(void *tx)
    SCFree( pStr );                       
 */
 
-end:    
     return 0;
  }
 

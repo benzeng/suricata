@@ -71,6 +71,7 @@ typedef struct TdsFragmentPacket_ {
 
 
 typedef struct TdsTransaction_ {
+    TAILQ_ENTRY(TdsTransaction_) next;
 
     uint64_t tx_id;                        /*<< Internal transaction ID. */
 
