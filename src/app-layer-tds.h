@@ -94,6 +94,12 @@ typedef struct TdsTransaction_ {
     uint8_t bRequestComplete;
     uint8_t bResponseComplete;
 
+    /* Reassembled tds packet buffer */
+    uint8_t *request_buffer;
+    uint32_t request_buffer_len;
+    uint8_t *response_buffer;
+    uint32_t response_buffer_len;
+
 }TdsTransaction;
 
 typedef struct TDSState_ {

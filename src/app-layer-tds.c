@@ -344,6 +344,45 @@ static void TdsTxFree(void *tx)
     return -1;
  }
 
+ static int ReassembleTdsPacket( TdsTransaction *tx, int direction )
+ {
+    uint32_t nPacketLen = 0;
+    struct TdsFragmentPacket_ *pFragment = NULL;
+    struct TdsFragmentPacketList *pFragmentList = NULL;
+
+    if( direction == STREAM_TOSERVER ) {
+        pFragmentList = &tx->tdsRequestPacket;
+    }
+    else {
+        pFragmentList = &tx->tdsRespondsPacket;
+    }
+
+    TAILQ_FOREACH(pFragment, pFragmentList, next) {
+        nPacketLen += pFragment->nFragmentLen - 8;
+    }
+
+    uint8_t *pBuffer = SCCalloc( nPacketLen, sizeof(uint8_t) );
+    TAILQ_FOREACH(pFragment, pFragmentList, next) {
+        memcpy( pBuffer, pFragment->pfragmentBuffer+8, pFragment->nFragmentLen-8 );
+        pBuffer += pFragment->nFragmentLen - 8;
+    }
+
+    if( direction == STREAM_TOSERVER ) {
+        tx->request_buffer = pBuffer;
+        tx->request_buffer_len = nPacketLen;
+    }
+    else {
+        tx->response_buffer = pBuffer;
+        tx->response_buffer_len = nPacketLen;
+    }
+
+    // Debug:
+    uint8_t* pstr = FetchPrintableString( pBuffer, nPacketLen, '/' );
+    SCFree( pstr );
+
+    return 1;
+ }
+
  static int TdsParseRequest(Flow *f, void *state,
      AppLayerParserState *pstate, uint8_t *input, uint32_t input_len,
      void *local_data)
@@ -406,8 +445,10 @@ static void TdsTxFree(void *tx)
         memcpy( pFragment->pfragmentBuffer, data, nTdsPacketLen );
         TAILQ_INSERT_TAIL(&tds->curr->tdsRequestPacket, pFragment, next);  
 
-        if( data[1] == 0x01 )
+        if( data[1] == 0x01 ) {
             tds->curr->bRequestComplete = 1;
+            ReassembleTdsPacket( tds->curr, STREAM_TOSERVER );
+        }
             
          /* Not all data was processed ? */
          StreamingBufferSlide( tds->sbRequest, nTdsPacketLen );
@@ -483,8 +524,11 @@ static void TdsTxFree(void *tx)
        memcpy( pFragment->pfragmentBuffer, data, nTdsPacketLen );
        TAILQ_INSERT_TAIL(&tds->curr->tdsRespondsPacket, pFragment, next);  
 
-       if( data[1] == 0x01 )
+       if( data[1] == 0x01 ) {
            tds->curr->bResponseComplete = 1;
+           ReassembleTdsPacket( tds->curr, STREAM_TOCLIENT );
+       }
+           
            
         /* Not all data was processed ? */
         StreamingBufferSlide( tds->sbResponse, nTdsPacketLen );
@@ -548,7 +592,7 @@ static void TdsTxFree(void *tx)
      }
  
      else {
-         SCLogNotice("Protocol detecter and parser disabled for Template.");
+         SCLogNotice("Protocol detecter and parser disabled for tds.");
          return;
      }
  
