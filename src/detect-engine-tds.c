@@ -41,7 +41,7 @@ int DetectEngineInspectTDSBuffer(ThreadVars *tv,
     const Signature *s, const SigMatchData *smd,
     Flow *f, uint8_t flags, void *alstate, void *txv, uint64_t tx_id)
 {
-    TDSTransaction *tx = (TDSTransaction *)txv;
+    TdsTransaction *tx = (TdsTransaction *)txv;
     int ret = 0;
 
     if (flags & STREAM_TOSERVER && tx->request_buffer != NULL) {

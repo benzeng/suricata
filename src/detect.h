@@ -1358,6 +1358,9 @@ enum {
 
     DETECT_PREFILTER,
 
+    DETECT_TDS,
+    DETECT_AL_TDS_BUFFER,
+
     /* make sure this stays last */
     DETECT_TBLSIZE,
 };

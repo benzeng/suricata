@@ -45,14 +45,17 @@ static int DetectTdsSetup (DetectEngineCtx *, Signature *, const char *);
 static void DetectTdsFree (void *);
 static void DetectTdsRegisterTests (void);
 
+
+
 /**
  * \brief Registration function for tds: keyword
  *
  * This function is called once in the 'lifetime' of the engine.
  */
-void DetectTdsRegister(void) {
+void DetectTdsRegister(void) 
+{
     /* keyword name: this is how the keyword is used in a rule */
-    sigmatch_table[DETECT_TDS].name = "tds";
+    //sigmatch_table[DETECT_TDS].name = "tds";
     /* description: listed in "suricata --list-keywords=all" */
     sigmatch_table[DETECT_TDS].desc = "give an introduction into how a detection module works";
     /* link to further documentation of the keyword. Normally on the Suricata redmine/wiki */

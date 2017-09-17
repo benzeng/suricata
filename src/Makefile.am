@@ -147,6 +147,7 @@ detect-engine-tag.c detect-engine-tag.h \
 detect-engine-template.c detect-engine-template.h \
 detect-engine-threshold.c detect-engine-threshold.h \
 detect-engine-uri.c detect-engine-uri.h \
+detect-engine-tds.c detect-engine-tds.h \
 detect-fast-pattern.c detect-fast-pattern.h \
 detect-file-data.c detect-file-data.h \
 detect-file-hash-common.c detect-file-hash-common.h \
@@ -241,6 +242,7 @@ detect-tag.c detect-tag.h \
 detect-target.c detect-target.h \
 detect-template.c detect-template.h \
 detect-template-buffer.c detect-template-buffer.h \
+detect-tds-buffer.c detect-tds-buffer.h \
 detect-threshold.c detect-threshold.h \
 detect-tls.c detect-tls.h \
 detect-tls-cert-validity.c detect-tls-cert-validity.h \
@@ -254,6 +256,7 @@ detect-within.c detect-within.h \
 detect-modbus.c detect-modbus.h \
 detect-xbits.c detect-xbits.h \
 detect-cipservice.c detect-cipservice.h \
+detect-tds.c detect-tds.h \
 flow-bit.c flow-bit.h \
 flow.c flow.h \
 flow-hash.c flow-hash.h \
