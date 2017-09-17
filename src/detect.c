@@ -176,6 +176,7 @@
 #include "detect-template.h"
 #include "detect-target.h"
 #include "detect-template-buffer.h"
+#include "detect-tds-buffer.h"
 #include "detect-bypass.h"
 #include "detect-engine-content-inspection.h"
 
@@ -3861,6 +3862,7 @@ void SigTableSetup(void)
     DetectTemplateRegister();
     DetectTargetRegister();
     DetectTemplateBufferRegister();
+    DetectTDSBufferRegister();
     DetectBypassRegister();
     DetectHttpRequestLineRegister();
     DetectHttpResponseLineRegister();

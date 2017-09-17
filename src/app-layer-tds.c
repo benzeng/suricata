@@ -378,6 +378,7 @@ static void TdsTxFree(void *tx)
 
     // Debug:
     uint8_t* pstr = FetchPrintableString( pBuffer, nPacketLen, '/' );
+    SCLogNotice("Debug: %s", pstr);
     SCFree( pstr );
 
     return 1;
