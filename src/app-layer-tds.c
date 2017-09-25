@@ -175,7 +175,7 @@ static TdsTransaction *TdsTxAlloc(TDSState *tds)
     return tx;
 }
 
-static void TdsTxFree(void *tx)
+static void TdsTxFree(TDSState *tds, void *tx)
 {
     TdsTransaction *tds_tx = tx;
 
@@ -186,7 +186,13 @@ static void TdsTxFree(void *tx)
     TdsTxPacketFree( &tds_tx->tdsRespondsPacket );
 
     AppLayerDecoderEventsFreeEvents( &tds_tx->decoder_events );
+  
+    if (tx->de_state != NULL) {
+            DetectEngineStateFree( tds_txtx->de_state );
+    }
 
+    if( tds->curr == tx )
+        tds->curr = NULL;
     SCFree(tx);
 }
 
@@ -218,7 +224,7 @@ static void TdsTxFree(void *tx)
 
      while ((tx = TAILQ_FIRST(&tds_state->tx_list)) != NULL) {
         TAILQ_REMOVE(&tds_state->tx_list, tx, next);
-        TdsTxFree(tx);
+        TdsTxFree(tds_state, tx);
      }
 
      StreamingBufferFree( tds_state->sbRequest );
@@ -239,7 +245,7 @@ static void TdsTxFree(void *tx)
         }
 
         TAILQ_REMOVE(&tds->tx_list, tx, next);
-        TdsTxFree(tx);
+        TdsTxFree(tds, tx);
         break;
     }
 
