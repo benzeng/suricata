@@ -187,8 +187,8 @@ static void TdsTxFree(TDSState *tds, void *tx)
 
     AppLayerDecoderEventsFreeEvents( &tds_tx->decoder_events );
   
-    if (tx->de_state != NULL) {
-            DetectEngineStateFree( tds_txtx->de_state );
+    if (tds_tx->de_state != NULL) {
+            DetectEngineStateFree( tds_tx->de_state );
     }
 
     if( tds->curr == tx )
