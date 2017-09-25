@@ -194,12 +194,12 @@ static void TdsTxFree(TDSState *tds, void *tx)
     if( tds->curr == tx )
         tds->curr = NULL;
     
-    if( tx->request_buffer != NULL )
-        SCFree( tx->request_buffer );
-    if( tx->response_buffer != NULL )
-        SCFree( tx->response_buffer );
+    if( tds_tx->request_buffer != NULL )
+        SCFree( tds_tx->request_buffer );
+    if( tds_tx->response_buffer != NULL )
+        SCFree( tds_tx->response_buffer );
 
-    SCFree(tx);
+    SCFree(tds_tx);
 }
 
  static void *TdsStateAlloc(void)
