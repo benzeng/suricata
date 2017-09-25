@@ -335,7 +335,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
  {
     uint32_t i = 0;
 
-    if( data_len < 8 )
+    if( data_len < 15 )
          return -1;
     
     while( (i+1) < data_len ) {
@@ -343,6 +343,16 @@ static void TdsTxFree(TDSState *tds, void *tx)
             i++;
             continue;
         }               
+        if( data[i+8] != 0x21 && data[i+8] != 0x61 && data[i+8] != 0 ) {
+            i++;
+            continue;
+        }
+        uint16_t nTdsPacketLen = data[i+2]*0x100 +  data[i+3];
+        if( nTdsPacketLen > 8192 ) {
+            i++;
+            continue;
+        }
+
         // Found:
         return i;
     }
@@ -428,7 +438,8 @@ static void TdsTxFree(TDSState *tds, void *tx)
             break;
         }
    
-        StreamingBufferSlide( tds->sbRequest, nHeadOffset );
+        if( nHeadOffset > 0 )
+            StreamingBufferSlide( tds->sbRequest, nHeadOffset );
         StreamingBufferGetData( tds->sbRequest, &data, &data_len, &stream_offset );
         if( data_len < (8+1) ) {
             break;

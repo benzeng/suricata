@@ -55,6 +55,6 @@ int DetectEngineInspectTDSBuffer(ThreadVars *tv,
             DETECT_ENGINE_CONTENT_INSPECTION_MODE_STATE, NULL);
     }
 
-    SCLogNotice("Returning %d.", ret);
+    //SCLogNotice("Returning %d.", ret);
     return ret;
 }
