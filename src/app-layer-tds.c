@@ -188,7 +188,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
     AppLayerDecoderEventsFreeEvents( &tds_tx->decoder_events );
   
     if (tds_tx->de_state != NULL) {
-            DetectEngineStateFree( tds_tx->de_state );
+        DetectEngineStateFree( tds_tx->de_state );
     }
 
     if( tds->curr == tx )
@@ -536,7 +536,9 @@ static void TdsTxFree(TDSState *tds, void *tx)
            break;
        }
   
-       StreamingBufferSlide( tds->sbResponse, nHeadOffset );
+       if( nHeadOffset > 0 ) {
+           StreamingBufferSlide( tds->sbResponse, nHeadOffset );
+       }
        StreamingBufferGetData( tds->sbResponse, &data, &data_len, &stream_offset );
        if( data_len < 8 ) {
             break;
@@ -549,6 +551,9 @@ static void TdsTxFree(TDSState *tds, void *tx)
   
        /* Must have a transaction */
        if( NULL == tds->curr ) {
+           // Todo: Slide all data ?
+           // ...
+
            break;
        }
        TdsFragmentPacket *pFragment = SCCalloc( 1, sizeof(TdsFragmentPacket) );
