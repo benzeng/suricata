@@ -394,7 +394,8 @@ static void TdsTxFree(TDSState *tds, void *tx)
 
     // Debug:
     uint8_t* pstr = FetchPrintableString( pBuffer, nPacketLen, '/' );
-    SCLogNotice("Debug: %s", pstr);
+    //SCLogNotice("Debug: %s", pstr);
+    printf( "Packet: %s\n", pstr );
     SCFree( pstr );
 
     return 1;
@@ -431,6 +432,13 @@ static void TdsTxFree(TDSState *tds, void *tx)
         uint32_t data_len = 0;
         uint64_t stream_offset = 0;
         StreamingBufferGetData( tds->sbRequest, &data, &data_len, &stream_offset );
+        if( data_len < 0 ) {
+            break;
+        }
+        if( data_len == 0 ) {
+            break;
+        }
+
    
         /* Try to Match TDS header: 0F 00 | 0F 01 , input_len >= 8 */   
         nHeadOffset = FindTdsHead( data, data_len ); 
@@ -514,6 +522,12 @@ static void TdsTxFree(TDSState *tds, void *tx)
        uint32_t data_len = 0;
        uint64_t stream_offset = 0;
        StreamingBufferGetData( tds->sbResponse, &data, &data_len, &stream_offset );
+       if( data_len < 0 ) {
+           break;
+       }
+       if( data_len == 0 ) {
+           break;
+       }
   
        /* Try to Match TDS header: 0F 00 | 0F 01 , input_len >= 8 */   
        nHeadOffset = FindTdsHead( data, data_len ); 
