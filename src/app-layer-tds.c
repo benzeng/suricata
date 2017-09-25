@@ -377,10 +377,11 @@ static void TdsTxFree(TDSState *tds, void *tx)
         nPacketLen += pFragment->nFragmentLen - 8;
     }
 
-    uint8_t *pBuffer = SCCalloc( nPacketLen, sizeof(uint8_t) );
+    uint8_t *ptr;
+    uint8_t *pBuffer = ptr = SCCalloc( nPacketLen, sizeof(uint8_t) );
     TAILQ_FOREACH(pFragment, pFragmentList, next) {
-        memcpy( pBuffer, pFragment->pfragmentBuffer+8, pFragment->nFragmentLen-8 );
-        pBuffer += pFragment->nFragmentLen - 8;
+        memcpy( ptr, pFragment->pfragmentBuffer+8, pFragment->nFragmentLen-8 );
+        ptr += pFragment->nFragmentLen - 8;
     }
 
     if( direction == STREAM_TOSERVER ) {
