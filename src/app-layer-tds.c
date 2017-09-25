@@ -358,6 +358,10 @@ static void TdsTxFree(TDSState *tds, void *tx)
             i++;
             continue;
         }
+        if( nTdsPacketLen == 0 ) {
+            i++;
+            continue;
+        }
 
         // Found:
         return i;
@@ -416,7 +420,8 @@ static void TdsTxFree(TDSState *tds, void *tx)
      int32_t nHeadOffset = 0;
      TDSState *tds = (TDSState *)state;
      
-
+     //return 0;
+     
      SCLogNotice("Parsing TDS request: len=%"PRIu32, input_len);
  
      /* Likely connection closed, we can just return here. */
@@ -439,6 +444,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
         uint32_t data_len = 0;
         uint64_t stream_offset = 0;
         StreamingBufferGetData( tds->sbRequest, &data, &data_len, &stream_offset );
+	//SCLogNotice("TDS request stream Buffer len: data_len=%"PRIu32, data_len);
         if( data_len < 0 ) {
             break;
         }
@@ -506,6 +512,14 @@ static void TdsTxFree(TDSState *tds, void *tx)
     int32_t nHeadOffset = 0;
     TDSState *tds = (TDSState *)state;
     
+    //return 0;
+    /* Must have a transaction */
+    if( NULL == tds->curr ) {
+           // Todo: Slide all data ?
+           // ...
+
+           return 0;
+    }
 
     SCLogNotice("Parsing TDS response: len=%"PRIu32, input_len);
 
@@ -529,6 +543,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
        uint32_t data_len = 0;
        uint64_t stream_offset = 0;
        StreamingBufferGetData( tds->sbResponse, &data, &data_len, &stream_offset );
+       //SCLogNotice("TDS response stream Buffer len: data_len=%"PRIu32, data_len);
        if( data_len < 0 ) {
            break;
        }
