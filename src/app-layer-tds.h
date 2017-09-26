@@ -86,19 +86,19 @@ typedef struct TdsTransaction_ {
     uint32_t nDestIp;
     uint32_t nDestPort;
 
-    uint16_t tdsRequestPacketState;
-    uint16_t tdsResponsePacketState;
+    //uint16_t tdsRequestPacketState;
+    //uint16_t tdsResponsePacketState;
 
-    TAILQ_HEAD( TdsFragmentPacketList, TdsFragmentPacket_ )  tdsRequestPacket;
-    struct TdsFragmentPacketList tdsRespondsPacket;
-    uint8_t bRequestComplete;
-    uint8_t bResponseComplete;
+    TAILQ_HEAD( TdsFragmentPacketList, TdsFragmentPacket_ )  tdsPackets;
+    //struct TdsFragmentPacketList tdsRespondsPacket;
+    uint8_t bComplete;
+    //uint8_t bResponseComplete;
 
     /* Reassembled tds packet buffer */
-    uint8_t *request_buffer;
-    uint32_t request_buffer_len;
-    uint8_t *response_buffer;
-    uint32_t response_buffer_len;
+    uint8_t *full_packet_buffer;
+    uint32_t full_packet_len;
+    //uint8_t *response_buffer;
+    //uint32_t response_buffer_len;
 
 }TdsTransaction;
 
@@ -106,7 +106,9 @@ typedef struct TDSState_ {
 
     TAILQ_HEAD(, TdsTransaction_) tx_list; 
 
-    TdsTransaction *curr;                  /**< Current transaction. */
+    TdsTransaction *request_curr;                  /**< Current transaction. */
+    TdsTransaction *reponse_curr;
+
     StreamingBufferConfig sbcfg;
     StreamingBuffer *sbRequest;            /* Request buffer for buffering incomplete request PDUs received over TCP. */
     StreamingBuffer *sbResponse;
