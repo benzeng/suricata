@@ -173,11 +173,8 @@ static TdsTransaction *TdsTxAlloc(TDSState *tds, uint8_t direction )
     else {
         tds->request_curr = tx;
     }
-    //tds->curr =  tx;
 
     TAILQ_INIT(&tx->tdsPackets);
-    //TAILQ_INIT(&tx->tdsRespondsPacket);
-
     TAILQ_INSERT_TAIL(&tds->tx_list, tx, next);
     return tx;
 }
@@ -186,12 +183,8 @@ static void TdsTxFree(TDSState *tds, void *tx)
 {
     TdsTransaction *tds_tx = tx;
 
-    //// For Request 
     TdsTxPacketFree( &tds_tx->tdsPackets );
      
-    // For Response
-    //TdsTxPacketFree( &tds_tx->tdsRespondsPacket );
-
     AppLayerDecoderEventsFreeEvents( &tds_tx->decoder_events );
   
     if (tds_tx->de_state != NULL) {
@@ -205,8 +198,6 @@ static void TdsTxFree(TDSState *tds, void *tx)
     
     if( tds_tx->full_packet_buffer != NULL )
         SCFree( tds_tx->full_packet_buffer );
-    //if( tds_tx->response_buffer != NULL )
-    //    SCFree( tds_tx->response_buffer );
 
     SCFree(tds_tx);
 }
@@ -294,12 +285,6 @@ static void TdsTxFree(TDSState *tds, void *tx)
 
     if( tds->bComplete )
         retval = 1;
-    //if (direction & STREAM_TOCLIENT && tds->bResponseComplete) {
-    //    retval = 1;
-    //}
-    //else if (direction & STREAM_TOSERVER && tds->bRequestComplete) {
-    //    retval = 1;
-    //}
 
     SCReturnInt(retval);
  }
@@ -393,11 +378,9 @@ static void TdsTxFree(TDSState *tds, void *tx)
     char *strType = NULL;
     pFragmentList = &tx->tdsPackets;
     if( direction == STREAM_TOSERVER ) {
-        //pFragmentList = &tx->tdsRequestPacket;
 	    strType = "Request:";
     }
     else {
-        //pFragmentList = &tx->tdsRespondsPacket;
 	    strType = "Reponse:";
     }
 
@@ -414,16 +397,6 @@ static void TdsTxFree(TDSState *tds, void *tx)
 
     tx->full_packet_buffer = pBuffer;
     tx->full_packet_len = nPacketLen;
-    /*
-    if( direction == STREAM_TOSERVER ) {
-        tx->request_buffer = pBuffer;
-        tx->request_buffer_len = nPacketLen;
-    }
-    else {
-        tx->response_buffer = pBuffer;
-        tx->response_buffer_len = nPacketLen;
-    }
-    */
 
     // Debug:
     uint8_t* pstr = FetchPrintableString( pBuffer, nPacketLen, '/' );
@@ -441,8 +414,6 @@ static void TdsTxFree(TDSState *tds, void *tx)
      StreamingBufferSegment seg;
      int32_t nHeadOffset = 0;
      TDSState *tds = (TDSState *)state;
-     
-     //return 0;
      
      SCLogNotice("Parsing TDS request: len=%"PRIu32, input_len);
  
@@ -466,7 +437,6 @@ static void TdsTxFree(TDSState *tds, void *tx)
         uint32_t data_len = 0;
         uint64_t stream_offset = 0;
         StreamingBufferGetData( tds->sbRequest, &data, &data_len, &stream_offset );
-	    //SCLogNotice("TDS request stream Buffer len: data_len=%"PRIu32, data_len);
         if( data_len < 0 ) {
             break;
         }
@@ -501,26 +471,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
                 break;
            }
         }
-/*        
-        else if( data[8] == 0x21 ) {
-	        SCLogNotice("Parsing TDS request: New request incoming before previously complete!");
-	        // ToDo: Clean current transaction ?
-	        // ...
-	        // Force complete:
-	        tds->request_curr->bComplete = 1;
-            ReassembleTdsPacket( tds->request_curr, STREAM_TOSERVER );
-	        //tds->curr->bResponseComplete = 1;
-            //ReassembleTdsPacket( tds->curr, STREAM_TOCLIENT );
-	   
-	        // ToDo: Clean Response buffer ?
-	        // ...
-	  
-	        TdsTransaction *tx = TdsTxAlloc( tds, STREAM_TOSERVER );
-            if( NULL == tx ) {
-                break;
-            }
-        }
-*/        
+        
         TdsFragmentPacket *pFragment = SCCalloc( 1, sizeof(TdsFragmentPacket) );
         pFragment->pfragmentBuffer = SCCalloc( nTdsPacketLen, sizeof(uint8_t) );;
         pFragment->nFragmentLen = nTdsPacketLen;
@@ -550,15 +501,6 @@ static void TdsTxFree(TDSState *tds, void *tx)
     int32_t nHeadOffset = 0;
     TDSState *tds = (TDSState *)state;
     
-    //return 0;
-    /* Must have a transaction */
-    //if( NULL == tds->curr ) {
-    //       // Todo: Slide all data ?
-    //      // ...
-    //
-    //       return 0;
-    //}
-
     SCLogNotice("Parsing TDS response: len=%"PRIu32, input_len);
 
     /* Likely connection closed, we can just return here. */
@@ -581,7 +523,6 @@ static void TdsTxFree(TDSState *tds, void *tx)
        uint32_t data_len = 0;
        uint64_t stream_offset = 0;
        StreamingBufferGetData( tds->sbResponse, &data, &data_len, &stream_offset );
-       //SCLogNotice("TDS response stream Buffer len: data_len=%"PRIu32, data_len);
        if( data_len < 0 ) {
            break;
        }
@@ -608,13 +549,6 @@ static void TdsTxFree(TDSState *tds, void *tx)
            break;
        }
   
-       /* Must have a transaction */
-       //if( NULL == tds->curr ) {
-       //    // Todo: Slide all data ?
-       //    // ...
-       //
-       //    break;
-       //}
        /* Allocate a transaction */
        if( NULL == tds->reponse_curr ) {
            TdsTransaction *tx = TdsTxAlloc( tds, STREAM_TOCLIENT );
