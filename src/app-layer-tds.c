@@ -376,11 +376,14 @@ static void TdsTxFree(TDSState *tds, void *tx)
     struct TdsFragmentPacket_ *pFragment = NULL;
     struct TdsFragmentPacketList *pFragmentList = NULL;
 
+    char *strType = NULL;
     if( direction == STREAM_TOSERVER ) {
         pFragmentList = &tx->tdsRequestPacket;
+	strType = "Request:";
     }
     else {
         pFragmentList = &tx->tdsRespondsPacket;
+	strType = "Reponse:";
     }
 
     TAILQ_FOREACH(pFragment, pFragmentList, next) {
@@ -406,7 +409,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
     // Debug:
     uint8_t* pstr = FetchPrintableString( pBuffer, nPacketLen, '/' );
     //SCLogNotice("Debug: %s", pstr);
-    printf( "Packet: %s\n", pstr );
+    printf( "%s: %s\n", strType, pstr );
     SCFree( pstr );
 
     return 1;
@@ -472,12 +475,30 @@ static void TdsTxFree(TDSState *tds, void *tx)
         }
    
         /* Allocate a transaction */
-        if( NULL == tds->curr || data[9] == 0x21 ) {
+        if( NULL == tds->curr ) {
            TdsTransaction *tx = TdsTxAlloc( tds );
            if( NULL == tx ) {
                 break;
            }
         }
+        else if( data[8] == 0x21 ) {
+	   SCLogNotice("Parsing TDS request: New request incoming before previously complete!");
+	   // ToDo: Clean current transaction ?
+	   // ...
+	   // Force complete:
+	   tds->curr->bRequestComplete = 1;
+           ReassembleTdsPacket( tds->curr, STREAM_TOSERVER );
+	   tds->curr->bResponseComplete = 1;
+           ReassembleTdsPacket( tds->curr, STREAM_TOCLIENT );
+	   
+	   // ToDo: Clean Response buffer ?
+	   // ...
+	  
+	   TdsTransaction *tx = TdsTxAlloc( tds );
+           if( NULL == tx ) {
+                break;
+           }
+	}
         TdsFragmentPacket *pFragment = SCCalloc( 1, sizeof(TdsFragmentPacket) );
         pFragment->pfragmentBuffer = SCCalloc( nTdsPacketLen, sizeof(uint8_t) );;
         pFragment->nFragmentLen = nTdsPacketLen;
