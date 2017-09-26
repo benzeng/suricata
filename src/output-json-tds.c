@@ -115,7 +115,7 @@ static int JsonTDSLogger(ThreadVars *tv, void *thread_data,
     }
 
     /* Convert the request buffer to a string then log. */
-    char *log_buffer = FetchPrintableString( tdstx->full_packet_buffer, tdstx->full_packet_len, '/' );
+    char *log_buffer = (char *)FetchPrintableString( tdstx->full_packet_buffer, tdstx->full_packet_len, '|' );
     if (log_buffer != NULL) {
         if( tdstx->direction & STREAM_TOSERVER )
             json_object_set_new(tdsjs, "request", json_string(log_buffer));

@@ -349,14 +349,16 @@ static void TdsTxFree(TDSState *tds, void *tx)
     struct TdsFragmentPacket_ *pFragment = NULL;
     struct TdsFragmentPacketList *pFragmentList = NULL;
 
-    const char *strType = NULL;
+    //const char *strType = NULL;
     pFragmentList = &tx->tdsPackets;
+    /*
     if( direction == STREAM_TOSERVER ) {
 	    strType = "Request:";
     }
     else {
 	    strType = "Reponse:";
     }
+    */
 
     TAILQ_FOREACH(pFragment, pFragmentList, next) {
         nPacketLen += pFragment->nFragmentLen - 8;
@@ -451,7 +453,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
         TAILQ_INSERT_TAIL(&tds->request_curr->tdsPackets, pFragment, next);  
 
         if( data[1] == 0x01 ) {
-            tds->reponse_curr->direction = STREAM_TOSERVER;
+            tds->request_curr->direction = STREAM_TOSERVER;
             tds->request_curr->bComplete = 1;
             ReassembleTdsPacket( tds->request_curr, STREAM_TOSERVER );
 
