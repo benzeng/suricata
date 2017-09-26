@@ -375,7 +375,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
     struct TdsFragmentPacket_ *pFragment = NULL;
     struct TdsFragmentPacketList *pFragmentList = NULL;
 
-    char *strType = NULL;
+    const char *strType = NULL;
     pFragmentList = &tx->tdsPackets;
     if( direction == STREAM_TOSERVER ) {
 	    strType = "Request:";
@@ -437,9 +437,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
         uint32_t data_len = 0;
         uint64_t stream_offset = 0;
         StreamingBufferGetData( tds->sbRequest, &data, &data_len, &stream_offset );
-        if( data_len < 0 ) {
-            break;
-        }
+        
         if( data_len == 0 ) {
             break;
         }
@@ -523,9 +521,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
        uint32_t data_len = 0;
        uint64_t stream_offset = 0;
        StreamingBufferGetData( tds->sbResponse, &data, &data_len, &stream_offset );
-       if( data_len < 0 ) {
-           break;
-       }
+       
        if( data_len == 0 ) {
            break;
        }

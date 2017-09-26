@@ -69,7 +69,7 @@ typedef struct LogTDSLogThread_ {
 static int JsonTDSLogger(ThreadVars *tv, void *thread_data,
     const Packet *p, Flow *f, void *state, void *tx, uint64_t tx_id)
 {
-    TDSTransaction *tdstx = tx;
+    TdsTransaction *tdstx = tx;
     LogTDSLogThread *thread = thread_data;
     json_t *js, *tdsjs;
 
@@ -86,14 +86,15 @@ static int JsonTDSLogger(ThreadVars *tv, void *thread_data,
     }
 
     /* Convert the request buffer to a string then log. */
-    char *request_buffer = BytesToString(tdstx->request_buffer,
-        tdstx->request_buffer_len);
+    char *request_buffer = BytesToString(tdstx->full_packet_buffer,
+        tdstx->full_packet_len);
     if (request_buffer != NULL) {
         json_object_set_new(tdsjs, "request", json_string(request_buffer));
         SCFree(request_buffer);
     }
 
     /* Convert the response buffer to a string then log. */
+    /*
     char *response_buffer = BytesToString(tdstx->response_buffer,
         tdstx->response_buffer_len);
     if (response_buffer != NULL) {
@@ -101,6 +102,7 @@ static int JsonTDSLogger(ThreadVars *tv, void *thread_data,
             json_string(response_buffer));
         SCFree(response_buffer);
     }
+    */
 
     json_object_set_new(js, "tds", tdsjs);
 
