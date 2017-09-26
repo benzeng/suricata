@@ -56,33 +56,7 @@
      { NULL, -1 },
  };
 
-/*
-    Note: Returned pointer should be freed.
-*/
-static uint8_t* FetchPrintableString( const uint8_t *pHexBuffer, uint32_t nBufferLen, char space )
-{
-    char bFlag = 0;
-    uint32_t i = 0, j=0;
-    uint8_t *pOutput = SCCalloc( 1, nBufferLen );
-    
-    memset( pOutput, 0, nBufferLen );
-    for( i=0; i<nBufferLen; ++i ) {
-        if( pHexBuffer[i] < 0x20  || pHexBuffer[i] >= 0x7F ) {
-            if( !bFlag ) {
-                pOutput[j++] = space;
-                bFlag = 1;
-            }
-            // else skip !
-        }
-        else {
-            bFlag = 0;
-            pOutput[j++] = pHexBuffer[i];
-        } 
-    }
 
-    pOutput[j++] = 0;
-    return (pOutput);
-}
  
  
  static int TdsStateGetEventInfo(const char *event_name, int *event_id,
@@ -399,10 +373,10 @@ static void TdsTxFree(TDSState *tds, void *tx)
     tx->full_packet_len = nPacketLen;
 
     // Debug:
-    uint8_t* pstr = FetchPrintableString( pBuffer, nPacketLen, '/' );
+    //uint8_t* pstr = FetchPrintableString( pBuffer, nPacketLen, '/' );
     //SCLogNotice("Debug: %s", pstr);
-    printf( "%s: %s\n", strType, pstr );
-    SCFree( pstr );
+    //printf( "%s: %s\n", strType, pstr );
+    //SCFree( pstr );
 
     return 1;
  }
@@ -477,6 +451,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
         TAILQ_INSERT_TAIL(&tds->request_curr->tdsPackets, pFragment, next);  
 
         if( data[1] == 0x01 ) {
+            tds->reponse_curr->direction = STREAM_TOSERVER;
             tds->request_curr->bComplete = 1;
             ReassembleTdsPacket( tds->request_curr, STREAM_TOSERVER );
 
@@ -560,6 +535,7 @@ static void TdsTxFree(TDSState *tds, void *tx)
        TAILQ_INSERT_TAIL(&tds->reponse_curr->tdsPackets, pFragment, next);  
 
        if( data[1] == 0x01 ) {
+           tds->reponse_curr->direction = STREAM_TOCLIENT;
            tds->reponse_curr->bComplete = 1;
            ReassembleTdsPacket( tds->reponse_curr, STREAM_TOCLIENT );
 

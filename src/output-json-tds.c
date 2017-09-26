@@ -66,6 +66,35 @@ typedef struct LogTDSLogThread_ {
     MemBuffer          *buffer;
 } LogTDSLogThread;
 
+
+/*
+    Note: Returned pointer should be freed.
+*/
+static uint8_t* FetchPrintableString( const uint8_t *pHexBuffer, uint32_t nBufferLen, char space )
+{
+    char bFlag = 0;
+    uint32_t i = 0, j=0;
+    uint8_t *pOutput = SCCalloc( 1, nBufferLen );
+    
+    memset( pOutput, 0, nBufferLen );
+    for( i=0; i<nBufferLen; ++i ) {
+        if( pHexBuffer[i] < 0x20  || pHexBuffer[i] >= 0x7F ) {
+            if( !bFlag ) {
+                pOutput[j++] = space;
+                bFlag = 1;
+            }
+            // else skip !
+        }
+        else {
+            bFlag = 0;
+            pOutput[j++] = pHexBuffer[i];
+        } 
+    }
+
+    pOutput[j++] = 0;
+    return (pOutput);
+}
+
 static int JsonTDSLogger(ThreadVars *tv, void *thread_data,
     const Packet *p, Flow *f, void *state, void *tx, uint64_t tx_id)
 {
@@ -86,11 +115,13 @@ static int JsonTDSLogger(ThreadVars *tv, void *thread_data,
     }
 
     /* Convert the request buffer to a string then log. */
-    char *request_buffer = BytesToString(tdstx->full_packet_buffer,
-        tdstx->full_packet_len);
-    if (request_buffer != NULL) {
-        json_object_set_new(tdsjs, "request", json_string(request_buffer));
-        SCFree(request_buffer);
+    char *log_buffer = FetchPrintableString( tdstx->full_packet_buffer, tdstx->full_packet_len, '/' );
+    if (log_buffer != NULL) {
+        if( tdstx->direction & STREAM_TOSERVER )
+            json_object_set_new(tdsjs, "request", json_string(log_buffer));
+        else
+            json_object_set_new(tdsjs, "response", json_string(log_buffer));
+        SCFree(log_buffer);
     }
 
     /* Convert the response buffer to a string then log. */
